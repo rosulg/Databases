@@ -464,3 +464,143 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 22);
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 31);
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 41);
+
+/* VIRTUAALVAADE #1 VAATA KÕIKI KAUPE LÄBI PGADMINI CREATE VIEW */
+
+
+/* SELECT kaup.kaup_kood,
+   puidutyyp.nimetus AS puidutyyp_nimetus,
+   tootja.nimetus AS tootja_nimetus,
+   kaup.kaup_maht_l,
+   pakend.nimetus AS pakend_nimetus,
+   kaup.kaup_pakk_hind,
+   kauba_seisundi_liik.nimetus
+  FROM tootja
+    JOIN (puidutyyp
+    JOIN (pakend
+    JOIN (kauba_seisundi_liik
+    JOIN kaup
+    ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
+    ON pakend.pakend_kood = kaup.pakend_kood)
+    ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood)
+    ON tootja.tootja_kood = kaup.tootja_kood;
+*/
+
+    CREATE OR REPLACE VIEW public.vaata_koiki_kaupu AS
+    SELECT kaup.kaup_kood,
+       puidutyyp.nimetus AS puidutyyp_nimetus,
+       tootja.nimetus AS tootja_nimetus,
+       kaup.kaup_maht_l,
+       pakend.nimetus AS pakend_nimetus,
+       kaup.kaup_pakk_hind,
+       kauba_seisundi_liik.nimetus
+      FROM tootja
+        JOIN (puidutyyp
+        JOIN (pakend
+        JOIN (kauba_seisundi_liik
+        JOIN kaup
+        ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
+        ON pakend.pakend_kood = kaup.pakend_kood)
+        ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood)
+        ON tootja.tootja_kood = kaup.tootja_kood;
+
+    ALTER TABLE public.vaata_koiki_kaupu
+        OWNER TO t154829;
+    COMMENT ON VIEW public.vaata_koiki_kaupu
+        IS 'Voimaldab laohalduril vaadata koiki kaupu.';
+
+/* VIRTUAALVAADE #2 VAATA AKTIIVSEID && MITTEAKTIIVSEID KAUPE LÄBI PGADMINI CREATE VIEW */
+
+/*
+SELECT kaup.kaup_kood,
+   puidutyyp.nimetus AS puidutyyp_nimetus,
+   tootja.nimetus AS tootja_nimetus,
+   kaup.kaup_maht_l,
+   pakend.nimetus AS pakend_nimetus,
+   kaup.kaup_pakk_hind,
+   kaup.kaup_reg_aeg,
+   kauba_seisundi_liik.nimetus
+  FROM tootja
+    JOIN (puidutyyp
+    JOIN (pakend
+    JOIN (kauba_seisundi_liik
+    JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
+ WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[2, 3]);
+
+ */
+
+
+ CREATE OR REPLACE VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu AS
+SELECT kaup.kaup_kood,
+   puidutyyp.nimetus AS puidutyyp_nimetus,
+   tootja.nimetus AS tootja_nimetus,
+   kaup.kaup_maht_l,
+   pakend.nimetus AS pakend_nimetus,
+   kaup.kaup_pakk_hind,
+   kaup.kaup_reg_aeg,
+   kauba_seisundi_liik.nimetus
+  FROM tootja
+    JOIN (puidutyyp
+    JOIN (pakend
+    JOIN (kauba_seisundi_liik
+    JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
+ WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[2, 3]);
+
+ALTER TABLE public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
+    OWNER TO t154829;
+COMMENT ON VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
+    IS 'Voimaldab laohalduril vaadata aktiivseid- ja mitteaktiivseid kaupu.';
+
+ /* VIRTUAALVAADE #3 koondaruanne */
+
+/*
+SELECT Kaup.kaup_kood, Puidutyyp.nimetus AS puidutyyp_nimetus, Tootja.nimetus AS tootja_nimetus, Kauba_kategooria_tyyp.nimetus AS kauba_kategooria_nimetus, Kaup.kaup_maht_l, Pakend.nimetus AS pakend_nimetus, Kaup.kaup_pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.kaup_reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail
+FROM Tootja
+INNER JOIN (Puidutyyp
+INNER JOIN (Pakend
+INNER JOIN ((Kauba_seisundi_liik
+INNER JOIN ((Kaup
+INNER JOIN Isik
+ON Kaup.reg_isik_id = Isik.isik_id)
+INNER JOIN Tootaja
+ON (Tootaja.isik_id = Kaup.reg_isik_id)
+AND (Isik.isik_id = Tootaja.isik_id))
+ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
+INNER JOIN ((Kauba_kategooria_tyyp
+INNER JOIN Kauba_kategooria
+ON Kauba_kategooria_tyyp.kauba_kategooria_tyyp_kood = Kauba_kategooria.kauba_kategooria_tyyp_kood)
+INNER JOIN Kauba_kategooria_omamine
+ON Kauba_kategooria.kauba_kategooria_kood = Kauba_kategooria_omamine.kauba_kategooria_kood)
+ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
+ON Pakend.pakend_kood = Kaup.pakend_kood)
+ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
+ON Tootja.tootja_kood = Kaup.tootja_kood;
+*/
+
+CREATE OR REPLACE VIEW public.vaata_koondaruannet AS
+SELECT Kaup.kaup_kood, Puidutyyp.nimetus AS puidutyyp_nimetus, Tootja.nimetus AS tootja_nimetus, Kauba_kategooria_tyyp.nimetus AS kauba_kategooria_nimetus, Kaup.kaup_maht_l, Pakend.nimetus AS pakend_nimetus, Kaup.kaup_pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.kaup_reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail
+FROM Tootja
+INNER JOIN (Puidutyyp
+INNER JOIN (Pakend
+INNER JOIN ((Kauba_seisundi_liik
+INNER JOIN ((Kaup
+INNER JOIN Isik
+ON Kaup.reg_isik_id = Isik.isik_id)
+INNER JOIN Tootaja
+ON (Tootaja.isik_id = Kaup.reg_isik_id)
+AND (Isik.isik_id = Tootaja.isik_id))
+ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
+INNER JOIN ((Kauba_kategooria_tyyp
+INNER JOIN Kauba_kategooria
+ON Kauba_kategooria_tyyp.kauba_kategooria_tyyp_kood = Kauba_kategooria.kauba_kategooria_tyyp_kood)
+INNER JOIN Kauba_kategooria_omamine
+ON Kauba_kategooria.kauba_kategooria_kood = Kauba_kategooria_omamine.kauba_kategooria_kood)
+ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
+ON Pakend.pakend_kood = Kaup.pakend_kood)
+ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
+ON Tootja.tootja_kood = Kaup.tootja_kood;
+
+ALTER TABLE public.vaata_koondaruannet
+    OWNER TO t154829;
+COMMENT ON VIEW public.vaata_koondaruannet
+    IS 'Voimaldab laohalduril vaadata koondaruannet.';
