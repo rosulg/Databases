@@ -1,0 +1,466 @@
+START TRANSACTION
+;
+
+DROP SEQUENCE IF EXISTS isik_isik_id_seq CASCADE
+;
+
+DROP TABLE IF EXISTS Amet CASCADE
+;
+
+DROP TABLE IF EXISTS Isiku_seisundi_liik CASCADE
+;
+
+DROP TABLE IF EXISTS Kauba_kategooria CASCADE
+;
+
+DROP TABLE IF EXISTS Kauba_kategooria_tyyp CASCADE
+;
+
+DROP TABLE IF EXISTS Kauba_seisundi_liik CASCADE
+;
+
+DROP TABLE IF EXISTS Kliendi_seisundi_liik CASCADE
+;
+
+DROP TABLE IF EXISTS Pakend CASCADE
+;
+
+DROP TABLE IF EXISTS Puidutyyp CASCADE
+;
+
+DROP TABLE IF EXISTS Riik CASCADE
+;
+
+DROP TABLE IF EXISTS Tootaja_seisundi_liik CASCADE
+;
+
+DROP TABLE IF EXISTS Tootja CASCADE
+;
+
+DROP TABLE IF EXISTS Isik CASCADE
+;
+
+DROP TABLE IF EXISTS Tootaja CASCADE
+;
+
+DROP TABLE IF EXISTS Klient CASCADE
+;
+
+DROP TABLE IF EXISTS Kaup CASCADE
+;
+
+DROP TABLE IF EXISTS Kauba_kategooria_omamine CASCADE
+;
+
+
+DROP DOMAIN IF EXISTS ei_koosne_tyhikutest CASCADE
+;
+
+DROP DOMAIN IF EXISTS reg_aeg_vahemik CASCADE
+;
+
+CREATE DOMAIN ei_koosne_tyhikutest AS
+varchar(50) NOT NULL
+CHECK(
+   VALUE !~'^[[:space:]]*$'
+);
+
+
+CREATE DOMAIN reg_aeg_vahemik AS
+timestamp NOT NULL
+CHECK(
+   '2010-01-01 00:00:00' <= VALUE AND '2100-12-31 23:59:59' >= VALUE
+);
+
+CREATE TABLE Amet
+(
+	amet_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	kirjeldus varchar(255)	,
+	CONSTRAINT pk_Amet_amet_kood PRIMARY KEY (amet_kood),
+	CONSTRAINT uq_Amet_nimetus UNIQUE (nimetus),
+	CONSTRAINT chk_Amet_kirjeldus_ei_koosne_tyhikutest CHECK (kirjeldus!~'^[[:space:]]*$')
+) WITH (fillfactor=90)
+;
+
+CREATE TABLE Isiku_seisundi_liik
+(
+	isiku_seisundi_liik_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Isiku_Seisundi_Liik_isiku_seisundi_liik_kood PRIMARY KEY (isiku_seisundi_liik_kood),
+	CONSTRAINT uq_Isiku_Seisundi_Liik_nimetus UNIQUE (nimetus)
+)
+;
+
+CREATE TABLE Kauba_kategooria_tyyp
+(
+	kauba_kategooria_tyyp_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Kauba_Kategooria_Tyyp_kauba_kategooria_tyyp_kood PRIMARY KEY (kauba_kategooria_tyyp_kood),
+	CONSTRAINT uq_Kauba_Kategooria_Tyyp_nimetus UNIQUE (nimetus)
+)
+;
+
+
+CREATE TABLE Kauba_kategooria
+(
+	kauba_kategooria_kood smallint NOT NULL,
+	kauba_kategooria_tyyp_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Kauba_Kategooria_kauba_kategooria_kood PRIMARY KEY (kauba_kategooria_kood),
+	CONSTRAINT uq_Kauba_Kategooria_nimetus UNIQUE (nimetus),
+	CONSTRAINT fk_Kauba_Kategooria_kauba_kategooria_tyyp_kood FOREIGN KEY (kauba_kategooria_tyyp_kood) REFERENCES Kauba_kategooria_tyyp (kauba_kategooria_tyyp_kood) ON DELETE No Action ON UPDATE Cascade
+)
+;
+
+CREATE TABLE Kliendi_seisundi_liik
+(
+	kliendi_seisundi_liik_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Kliendi_Seisundi_Liik_kliendi_seisundi_liik_kood PRIMARY KEY (kliendi_seisundi_liik_kood),
+	CONSTRAINT uq_Kliendi_Seisundi_Liik_nimetus UNIQUE (nimetus)
+)
+;
+
+
+CREATE TABLE Kauba_seisundi_liik
+(
+	kauba_seisundi_liik_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Kauba_Seisundi_Liik_kauba_seisundi_liik_kood PRIMARY KEY (kauba_seisundi_liik_kood),
+	CONSTRAINT uq_Kauba_Seisundi_Liik_nimetus UNIQUE (nimetus)
+)
+;
+
+
+CREATE TABLE Pakend
+(
+	pakend_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	pilt varchar(2100)	 NOT NULL,
+	CONSTRAINT pk_Pakend_pakend_kood PRIMARY KEY (pakend_kood),
+	CONSTRAINT uq_Pakend_nimetus UNIQUE (nimetus),
+	CONSTRAINT uq_Pakend_pilt UNIQUE (pilt),
+	CONSTRAINT chk_Pakend_pilt_url_loppeb_jpg CHECK (UPPER(RIGHT(pilt,4))='.JPG')
+)
+;
+
+CREATE TABLE Puidutyyp
+(
+	puidutyyp_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Puidutyyp_puidutyyp_kood PRIMARY KEY (puidutyyp_kood),
+	CONSTRAINT uq_Puidutyyp_nimetus UNIQUE (nimetus)
+)
+;
+
+CREATE TABLE Riik
+(
+	riik_kood char(3)	 NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Riik_riik_kood PRIMARY KEY (riik_kood),
+	CONSTRAINT uq_Riik_nimetus UNIQUE (nimetus),
+	CONSTRAINT chk_Riik_riik_kood_koosneb_kolmest_suur_tahest CHECK (riik_kood ~ '^[A-Z]{3}$')
+)
+;
+
+CREATE TABLE Tootaja_seisundi_liik
+(
+	tootaja_seisundi_liik_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Tootaja_Seisundi_Liik_tootaja_seisundi_liik_kood PRIMARY KEY (tootaja_seisundi_liik_kood),
+	CONSTRAINT uq_Tootaja_Seisundi_Liik_nimetus UNIQUE (nimetus)
+)
+;
+
+CREATE TABLE Tootja
+(
+	tootja_kood smallint NOT NULL,
+	nimetus ei_koosne_tyhikutest,
+	CONSTRAINT pk_Tootja_tootja_kood PRIMARY KEY (tootja_kood),
+	CONSTRAINT uq_Tootja_nimetus UNIQUE (nimetus)
+)
+;
+
+CREATE TABLE Isik
+(
+	isik_id bigserial NOT NULL,
+	isiku_seisundi_liik_kood smallint NOT NULL DEFAULT 1,
+	e_mail varchar(354)	 NOT NULL,
+	isikukood varchar(50)	 NOT NULL,
+	riik_kood char(3)	 NOT NULL,
+	synni_kp date NOT NULL,
+	parool varchar(60)	 NOT NULL,
+	reg_aeg reg_aeg_vahemik DEFAULT localtimestamp(0),
+	elukoht varchar(1000)	 NOT NULL,
+	eesnimi varchar(1000)	,
+	perenimi varchar(1000)	,
+	CONSTRAINT pk_Isik_isik_id PRIMARY KEY (isik_id),
+	CONSTRAINT uq_Isik_e_mail UNIQUE (e_mail),
+	CONSTRAINT uq_Isik_isikukood_riik_kood UNIQUE (isikukood,riik_kood),
+	CONSTRAINT chk_Isik_e_mail_sisaldab_at_marki CHECK (e_mail LIKE '%@%'),
+	CONSTRAINT chk_Isik_isikukood_ei_koosne_tyhikutest CHECK (isikukood!~'^[[:space:]]*$'),
+	CONSTRAINT chk_Isik_synni_kp_vaiksem_reg_ajast CHECK (synni_kp <= reg_aeg),
+	CONSTRAINT chk_Isik_eesnimi_voi_perekonnanimi CHECK (eesnimi IS NOT NULL OR perenimi IS NOT NULL),
+	CONSTRAINT chk_Isik_eesnimi_ei_koosne_tyhikutest CHECK (eesnimi!~'^[[:space:]]*$'),
+	CONSTRAINT chk_Isik_perenimi_ei_koosne_tyhikutest CHECK (perenimi!~'^[[:space:]]*$'),
+	CONSTRAINT chk_Isik_elukoht_ei_koosne_tyhikutest CHECK (elukoht!~'^[[:space:]]*$'),
+	CONSTRAINT chk_Isik_elukoht_ei_koosne_numbritest CHECK (elukoht!~'^[0-9]*$'),
+	CONSTRAINT chk_Isik_synni_kp_vahemik CHECK (synni_kp>='1900-01-01' AND synni_kp<='2100-12-31'),
+	CONSTRAINT fk_Isik_isiku_seisundi_liik_kood FOREIGN KEY (isiku_seisundi_liik_kood) REFERENCES Isiku_seisundi_liik (isiku_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Isik_riik_kood FOREIGN KEY (riik_kood) REFERENCES Riik (riik_kood) ON DELETE No Action ON UPDATE Cascade
+) WITH (fillfactor=90)
+;
+
+CREATE TABLE Tootaja
+(
+	isik_id bigint NOT NULL,
+	amet_kood smallint NOT NULL,
+	tootaja_seisundi_liik_kood smallint NOT NULL DEFAULT 1,
+	CONSTRAINT pk_Tootaja_isik_id PRIMARY KEY (isik_id),
+	CONSTRAINT fk_Tootaja_amet_kood FOREIGN KEY (amet_kood) REFERENCES Amet (amet_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Tootaja_tootaja_seisundi_liik_kood FOREIGN KEY (tootaja_seisundi_liik_kood) REFERENCES Tootaja_seisundi_liik (tootaja_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Tootaja_isik_id FOREIGN KEY (isik_id) REFERENCES Isik (isik_id) ON DELETE Cascade ON UPDATE No Action
+)
+;
+
+CREATE TABLE Klient
+(
+	isik_id bigint NOT NULL,
+	kliendi_seisundi_liik_kood smallint NOT NULL DEFAULT 1,
+	on_nous_tylitamisega boolean NOT NULL DEFAULT false,
+	CONSTRAINT pk_Klient_isik_id PRIMARY KEY (isik_id),
+	CONSTRAINT fk_Klient_isik_id FOREIGN KEY (isik_id) REFERENCES Isik (isik_id) ON DELETE Cascade ON UPDATE No Action,
+	CONSTRAINT fk_Klient_kliendi_seisundi_liik_kood FOREIGN KEY (kliendi_seisundi_liik_kood) REFERENCES Kliendi_seisundi_liik (kliendi_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade
+)
+;
+
+CREATE TABLE Kaup
+(
+	kaup_kood integer NOT NULL,
+	kauba_seisundi_liik_kood smallint NOT NULL DEFAULT 1,
+	pakend_kood smallint NOT NULL,
+	puidutyyp_kood smallint NOT NULL,
+	tootja_kood smallint NOT NULL,
+	reg_isik_id bigint NOT NULL,
+	kaup_maht_l smallint NOT NULL,
+	kaup_reg_aeg reg_aeg_vahemik DEFAULT localtimestamp(0),
+	kaup_pakk_hind numeric(7,2) NOT NULL,
+	CONSTRAINT pk_Kaup_kaup_kood PRIMARY KEY (kaup_kood),
+	CONSTRAINT chk_Kaup_pakk_hind_ei_ole_vaiksem_nullist CHECK (kaup_pakk_hind>=0),
+	CONSTRAINT chk_Kaup_maht_l_on_suurem_nullist CHECK (kaup_maht_l>0),
+	CONSTRAINT chk_Kaup_kood_on_suurem_nullist CHECK (kaup_kood>0),
+	CONSTRAINT chk_Kaup_kood_on_kuni_kaheksa_numbrit_pikk CHECK (kaup_kood<10000000),
+	CONSTRAINT fk_Kaup_kauba_seisundi_liik_kood FOREIGN KEY (kauba_seisundi_liik_kood) REFERENCES Kauba_seisundi_liik (kauba_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Kaup_pakend_kood FOREIGN KEY (pakend_kood) REFERENCES Pakend (pakend_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Kaup_puidutyyp_kood FOREIGN KEY (puidutyyp_kood) REFERENCES Puidutyyp (puidutyyp_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Kaup_tootja_kood FOREIGN KEY (tootja_kood) REFERENCES Tootja (tootja_kood) ON DELETE No Action ON UPDATE Cascade,
+	CONSTRAINT fk_Kaup_reg_isik_id FOREIGN KEY (reg_isik_id) REFERENCES Tootaja (isik_id) ON DELETE No Action ON UPDATE No Action
+)
+;
+
+CREATE TABLE Kauba_kategooria_omamine
+(
+	kaup_kood integer NOT NULL,
+	kauba_kategooria_kood smallint NOT NULL,
+	CONSTRAINT pk_Kauba_Kategooria_Omamine_kategooria_kaup_kood_kauba_kat_kood PRIMARY KEY (kaup_kood,kauba_kategooria_kood),
+	CONSTRAINT fk_Kauba_Kategooria_Omamine_kaup_kood FOREIGN KEY (kaup_kood) REFERENCES Kaup (kaup_kood) ON DELETE Cascade ON UPDATE Cascade,
+	CONSTRAINT fk_Kauba_Kategooria_Omamine_kauba_kategooria_kood FOREIGN KEY (kauba_kategooria_kood) REFERENCES Kauba_kategooria (kauba_kategooria_kood) ON DELETE No Action ON UPDATE Cascade
+)
+;
+
+CREATE INDEX idx_fk_Kauba_Kategooria_kauba_kategooria_tyyp_kood ON Kauba_Kategooria (kauba_kategooria_tyyp_kood ASC);
+CREATE INDEX idx_fk_Isik_isiku_seisundi_liik_kood ON Isik (isiku_seisundi_liik_kood ASC);
+CREATE INDEX idx_Isik_riik_kood ON Isik (riik_kood ASC);
+CREATE INDEX idx_Isik_perenimi_eesnimi ON Isik (perenimi ASC,eesnimi ASC);
+CREATE INDEX idx_fk_Tootaja_amet_kood ON Tootaja (amet_kood ASC);
+CREATE INDEX idx_fk_Tootaja_tootaja_seisundi_liik_kood ON Tootaja (tootaja_seisundi_liik_kood ASC);
+CREATE INDEX idx_fk_Klient_kliendi_seisundi_liik_kood ON Klient (kliendi_seisundi_liik_kood ASC);
+CREATE INDEX idx_fk_Kaup_kauba_seisundi_liik_kood ON Kaup (kauba_seisundi_liik_kood ASC);
+CREATE INDEX idx_fk_Kaup_pakend_kood ON Kaup (pakend_kood ASC);
+CREATE INDEX idx_fk_Kaup_puidutyyp_kood ON Kaup (puidutyyp_kood ASC);
+CREATE INDEX idx_fk_Kaup_reg_isik_id ON Kaup (reg_isik_id ASC);
+CREATE INDEX idx_fk_Kaup_tootja_kood ON Kaup (tootja_kood ASC);
+CREATE INDEX idx_fk_Kauba_Kategooria_Omamine_kauba_kategooria_kood ON Kauba_Kategooria_Omamine (kauba_kategooria_kood ASC);
+
+COMMIT
+;
+
+
+/* ESIMESED INSERT LAUSED */
+
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9321,'Pakkija', 'Inimene, kes tegeleb saepuru pakendamisega');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (1324,'Laojuhataja', 'Inimene, kes vastutab lao toimimise eest');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9329,'Laotooline', 'Inimene, kes tegeleb kaupade v‰ljastamisega');
+
+INSERT INTO Tootja (tootja_kood, nimetus) VALUES (1111, 'Graanul Invest OU');
+INSERT INTO Tootja (tootja_kood, nimetus) VALUES (2222, 'AST Saeveski');
+INSERT INTO Tootja (tootja_kood, nimetus) VALUES (3333, 'Kergu Puit OU');
+
+INSERT INTO Kliendi_seisundi_liik (kliendi_seisundi_liik_kood, nimetus) VALUES (1, 'Aktiivne');
+INSERT INTO Kliendi_seisundi_liik (kliendi_seisundi_liik_kood, nimetus) VALUES (2, 'Mustas nimekirjas');
+
+INSERT INTO Puidutyyp (puidutyyp_kood, nimetus) VALUES (1, 'Kasepuu');
+INSERT INTO Puidutyyp (puidutyyp_kood, nimetus) VALUES (2, 'Kuusepuu');
+INSERT INTO Puidutyyp (puidutyyp_kood, nimetus) VALUES (3, 'Lodjapuu');
+INSERT INTO Puidutyyp (puidutyyp_kood, nimetus) VALUES (4, 'Tammepuu');
+
+INSERT INTO Pakend (pakend_kood, nimetus, pilt) VALUES (1, 'Kile', 'URL1.jpg');
+INSERT INTO Pakend (pakend_kood, nimetus, pilt) VALUES (2, 'Paber', 'URL2.jpg');
+INSERT INTO Pakend (pakend_kood, nimetus, pilt) VALUES (3, 'Riie', 'URL3.jpg');
+
+INSERT INTO Kauba_kategooria_tyyp (kauba_kategooria_tyyp_kood, nimetus) VALUES (1, 'Saepuru');
+
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (11, 1, 'Ehitus');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (12, 1, 'Tarbe');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (21, 1, 'Kodumaine');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (22, 1, 'V‰lismaine');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (31, 1, 'Kemikaalivaba');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (32, 1, 'Kemikaalidega');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (41, 1, 'Kuiv');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (42, 1, 'Niiske');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (43, 1, 'M‰rg');
+
+INSERT INTO Isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus) VALUES (1, 'Elus');
+INSERT INTO Isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus) VALUES (2, 'Surnud');
+
+
+INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (1, 'Tootab');
+INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (2, 'Praktikal');
+INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (3, 'Haiguslehel');
+INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (4, 'Puhkusel');
+
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (1, 'Ootel');
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (2, 'Mitteaktiivne');
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (3, 'Aktiivne');
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (4, 'Lopetatud');
+
+/*  MINU TESTANDMETE SERVER */
+
+/*
+CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+/*Lisan andmebaasi väliste andmete pakendamise laienduse, mis
+võimaldab PostgreSQL andmebaasis lugeda andmeid teisest
+PostgreSQL andmebaasist ja neid seal ka muuta (seda viimast pole
+antud ülesandes vaja teha).
+https://robots.thoughtbot.com/postgres-foreign-data-wrapper
+PostgreSQL väliste tabelite mehhanism võimaldab juurdepääsu
+erinevat tüüpi failide sisule, aga ka juurdepääsu andmetele, mis
+on teistes andmebaasides (võimalik, et teine
+andmebaasisüsteem/andmemudel), veebis, infokataloogides jne.
+Vaadake PostgreSQL erinevaid väliste andmete pakendajaid:
+https://wiki.postgresql.org/wiki/Foreign_data_wrappers */
+CREATE SERVER minu_testandmete_server_apex FOREIGN DATA WRAPPER
+postgres_fdw OPTIONS (host 'apex.ttu.ee', dbname 'testandmed',
+port '5432');
+/*Testandmed on apex.ttu.ee serveris andmebaasis testandmed.*/
+
+CREATE USER MAPPING FOR t154829 SERVER
+minu_testandmete_server_apex OPTIONS (user 't154829', password
+'pgdeploy');
+*/
+
+/*
+
+CREATE FOREIGN TABLE Riik_jsonb (
+riik JSONB )
+SERVER minu_testandmete_server_apex;
+
+*/
+
+/*Loon välise tabeli, mis viitab teises andmebaasis olevale
+tabelile, kus riikide andmed on JSON formaadis. Lähteandmed
+pärinevad: https://gist.github.com/jeremybuis/4997305
+psqlis on väliste tabelite nimekirja nägemiseks käsk \det */
+
+/* TESTANDMED RIIK_JSONB TABELIST */
+
+SELECT * FROM Riik_jsonb;
+INSERT INTO Riik (riik_kood, nimetus)
+SELECT riik->>'Alpha-3 code' AS riik_kood,
+riik->>'English short name lower case' AS nimetus
+FROM Riik_jsonb;
+/*Loen välisest tabelist JSON formaadis andmed, teisendan need
+sobivale kujule ja laadin enda andmebaasi tabelisse Riik.
+Koodinäiteid ja viiteid PostgreSQLis JSON formaadis andmetega
+töötamise kohta vaadake slaidikomplektist "Andmebaasisüsteemide
+Oracle ja PostgreSQL kasutamine" – otsige sealt sõna JSON.*/
+
+
+CREATE FOREIGN TABLE Isik_jsonb (
+isik JSONB )
+SERVER minu_testandmete_server_apex;
+
+/* TESTANDMED ISIK_JSONB TABELIST */
+
+SELECT * FROM Isik_jsonb;
+/*Sellesse tabelisse andmete genereerimiseks kasutasin:
+http://beta.json-generator.com */
+INSERT INTO Isik(isiku_seisundi_liik_kood, e_mail, isikukood,
+riik_kood, synni_kp, parool, elukoht, eesnimi, perenimi)
+SELECT isiku_seisundi_liik_kood::smallint, e_mail, isikukood, riik_kood,
+synni_kp::date, parool, elukoht, eesnimi, perenimi
+FROM (SELECT isik->>'riik' AS riik_kood,
+jsonb_array_elements(isik->'isikud')->>'isikukood' AS isikukood,
+jsonb_array_elements(isik->'isikud')->>'eesnimi' AS eesnimi,
+jsonb_array_elements(isik->'isikud')->>'perekonnanimi' AS
+perenimi,
+jsonb_array_elements(isik->'isikud')->>'email' AS e_mail,
+jsonb_array_elements(isik->'isikud')->>'synni_aeg' AS synni_kp,
+jsonb_array_elements(isik->'isikud')->>'seisund' AS
+isiku_seisundi_liik_kood,
+jsonb_array_elements(isik->'isikud')->>'parool' AS parool,
+jsonb_array_elements(isik->'isikud')->>'aadress' AS elukoht
+FROM isik_jsonb) AS lahteandmed
+WHERE isiku_seisundi_liik_kood::smallint=1;
+
+
+/* TEISED INSERT LAUSED */
+
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (1, 1324, 1);
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (2, 9321, 2);
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (3, 9329, 1);
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (4, 9329, 2);
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (5, 9321, 4);
+
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (6, default, default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (7,default,true);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (8,default,default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (9,default, true);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (10,default,default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (11,default, true);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (12,default, default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (13,default, default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (14,default, true);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (15,default, default);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (16,default, true);
+INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (17, 2, default);
+
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+VALUES (1111111, 1, 1, 1, 1111, 1, 20,default, 100.50);
+
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+VALUES (2222222, 2, 2, 2, 2222, 1, 50.3,default, 200.99);
+
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+VALUES (3333333, 3, 3, 3, 3333, 1, 30,default, 120.50);
+
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+VALUES (4444444, 4, 3, 4, 1111, 1, 30,default, 130.55);
+
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 11);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 21);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 32);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 42);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (2222222, 12);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (2222222, 22);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (2222222, 31);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (2222222, 41);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (3333333, 11);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (3333333, 21);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (3333333, 32);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (3333333, 43);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 12);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 22);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 31);
+INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 41);
