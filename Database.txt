@@ -243,12 +243,12 @@ CREATE TABLE Kaup
 	puidutyyp_kood smallint NOT NULL,
 	tootja_kood smallint NOT NULL,
 	reg_isik_id bigint NOT NULL,
-	kaup_maht_l smallint NOT NULL,
-	kaup_reg_aeg reg_aeg_vahemik DEFAULT localtimestamp(0),
-	kaup_pakk_hind numeric(7,2) NOT NULL,
+	maht_l smallint NOT NULL,
+	reg_aeg reg_aeg_vahemik DEFAULT localtimestamp(0),
+	pakk_hind numeric(7,2) NOT NULL,
 	CONSTRAINT pk_Kaup_kaup_kood PRIMARY KEY (kaup_kood),
-	CONSTRAINT chk_Kaup_pakk_hind_ei_ole_vaiksem_nullist CHECK (kaup_pakk_hind>=0),
-	CONSTRAINT chk_Kaup_maht_l_on_suurem_nullist CHECK (kaup_maht_l>0),
+	CONSTRAINT chk_pakk_hind_ei_ole_vaiksem_nullist CHECK (pakk_hind>=0),
+	CONSTRAINT chk_maht_l_on_suurem_nullist CHECK (maht_l>0),
 	CONSTRAINT chk_Kaup_kood_on_suurem_nullist CHECK (kaup_kood>0),
 	CONSTRAINT chk_Kaup_kood_on_kuni_kaheksa_numbrit_pikk CHECK (kaup_kood<10000000),
 	CONSTRAINT fk_Kaup_kauba_seisundi_liik_kood FOREIGN KEY (kauba_seisundi_liik_kood) REFERENCES Kauba_seisundi_liik (kauba_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade,
@@ -436,16 +436,16 @@ INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) V
 INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (16,default, true);
 INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (17, 2, default);
 
-INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
 VALUES (1111111, 1, 1, 1, 1111, 1, 20,default, 100.50);
 
-INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
 VALUES (2222222, 2, 2, 2, 2222, 1, 50.3,default, 200.99);
 
-INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
 VALUES (3333333, 3, 3, 3, 3333, 1, 30,default, 120.50);
 
-INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, kaup_maht_l, kaup_reg_aeg, kaup_pakk_hind)
+INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
 VALUES (4444444, 4, 3, 4, 1111, 1, 30,default, 130.55);
 
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 11);
@@ -468,13 +468,13 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
 /* VIRTUAALVAADE #1 VAATA KÕIKI KAUPE LÄBI PGADMINI CREATE VIEW */
 
 
-/* SELECT kaup.kaup_kood,
-   puidutyyp.nimetus AS puidutyyp_nimetus,
-   tootja.nimetus AS tootja_nimetus,
-   kaup.kaup_maht_l,
-   pakend.nimetus AS pakend_nimetus,
-   kaup.kaup_pakk_hind,
-   kauba_seisundi_liik.nimetus
+/* SELECT kaup.kaup_kood AS Kaup_kood,
+   puidutyyp.nimetus AS Puidutyyp,
+   tootja.nimetus AS Tootja,
+   kaup.maht_l AS Maht_l,
+   pakend.nimetus AS Pakend,
+   kaup.pakk_hind AS Paki_hind,
+   kauba_seisundi_liik.nimetus AS Seisundi_liik
   FROM tootja
     JOIN (puidutyyp
     JOIN (pakend
@@ -487,13 +487,13 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
 */
 
     CREATE OR REPLACE VIEW public.vaata_koiki_kaupu AS
-    SELECT kaup.kaup_kood,
-       puidutyyp.nimetus AS puidutyyp_nimetus,
-       tootja.nimetus AS tootja_nimetus,
-       kaup.kaup_maht_l,
-       pakend.nimetus AS pakend_nimetus,
-       kaup.kaup_pakk_hind,
-       kauba_seisundi_liik.nimetus
+    SELECT kaup.kaup_kood AS Kaup_kood,
+       puidutyyp.nimetus AS Puidutyyp,
+       tootja.nimetus AS Tootja,
+       kaup.maht_l AS Maht_l,
+       pakend.nimetus AS Pakend,
+       kaup.pakk_hind AS Paki_hind,
+       kauba_seisundi_liik.nimetus AS Seisundi_liik
       FROM tootja
         JOIN (puidutyyp
         JOIN (pakend
@@ -512,14 +512,14 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
 /* VIRTUAALVAADE #2 VAATA AKTIIVSEID && MITTEAKTIIVSEID KAUPE LÄBI PGADMINI CREATE VIEW */
 
 /*
-SELECT kaup.kaup_kood,
-   puidutyyp.nimetus AS puidutyyp_nimetus,
-   tootja.nimetus AS tootja_nimetus,
-   kaup.kaup_maht_l,
-   pakend.nimetus AS pakend_nimetus,
-   kaup.kaup_pakk_hind,
-   kaup.kaup_reg_aeg,
-   kauba_seisundi_liik.nimetus
+SELECT kaup.kaup_kood AS Kaup_kood,
+   puidutyyp.nimetus AS Puidutyyp,
+   tootja.nimetus AS Tootja,
+   kaup.maht_l AS Maht_l,
+   pakend.nimetus AS Pakend,
+   kaup.pakk_hind AS Paki_hind,
+   kaup.reg_aeg AS Reg_aeg,
+   kauba_seisundi_liik.nimetus AS Seisundi_liik
   FROM tootja
     JOIN (puidutyyp
     JOIN (pakend
@@ -531,14 +531,14 @@ SELECT kaup.kaup_kood,
 
 
  CREATE OR REPLACE VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu AS
-SELECT kaup.kaup_kood,
-   puidutyyp.nimetus AS puidutyyp_nimetus,
-   tootja.nimetus AS tootja_nimetus,
-   kaup.kaup_maht_l,
-   pakend.nimetus AS pakend_nimetus,
-   kaup.kaup_pakk_hind,
-   kaup.kaup_reg_aeg,
-   kauba_seisundi_liik.nimetus
+SELECT kaup.kaup_kood AS Kaup_kood,
+   puidutyyp.nimetus AS Puidutyyp,
+   tootja.nimetus AS Tootja,
+   kaup.maht_l AS Maht_l,
+   pakend.nimetus AS Pakend,
+   kaup.pakk_hind AS Paki_hind,
+   kaup.reg_aeg AS Reg_aeg,
+   kauba_seisundi_liik.nimetus AS Seisundi_liik
   FROM tootja
     JOIN (puidutyyp
     JOIN (pakend
@@ -554,7 +554,7 @@ COMMENT ON VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
  /* VIRTUAALVAADE #3 koondaruanne */
 
 /*
-SELECT Kaup.kaup_kood, Puidutyyp.nimetus AS puidutyyp_nimetus, Tootja.nimetus AS tootja_nimetus, Kauba_kategooria_tyyp.nimetus AS kauba_kategooria_nimetus, Kaup.kaup_maht_l, Pakend.nimetus AS pakend_nimetus, Kaup.kaup_pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.kaup_reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail
+SELECT Kaup.kaup_kood AS Kaup_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -577,18 +577,15 @@ ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
 ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
-CREATE OR REPLACE VIEW public.vaata_koondaruannet AS
-SELECT Kaup.kaup_kood, Puidutyyp.nimetus AS puidutyyp_nimetus, Tootja.nimetus AS tootja_nimetus, Kauba_kategooria_tyyp.nimetus AS kauba_kategooria_nimetus, Kaup.kaup_maht_l, Pakend.nimetus AS pakend_nimetus, Kaup.kaup_pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.kaup_reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail
+CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid AS
+SELECT Kaup.kaup_kood AS Kaup_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, Kauba_kategooria.nimetus AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
 INNER JOIN ((Kauba_seisundi_liik
-INNER JOIN ((Kaup
+INNER JOIN (Kaup
 INNER JOIN Isik
 ON Kaup.reg_isik_id = Isik.isik_id)
-INNER JOIN Tootaja
-ON (Tootaja.isik_id = Kaup.reg_isik_id)
-AND (Isik.isik_id = Tootaja.isik_id))
 ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
 INNER JOIN ((Kauba_kategooria_tyyp
 INNER JOIN Kauba_kategooria
@@ -600,7 +597,9 @@ ON Pakend.pakend_kood = Kaup.pakend_kood)
 ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
 ON Tootja.tootja_kood = Kaup.tootja_kood;
 
-ALTER TABLE public.vaata_koondaruannet
+ALTER TABLE public.vaata_kaupade_pohiandmeid
     OWNER TO t154829;
-COMMENT ON VIEW public.vaata_koondaruannet
+COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
     IS 'Voimaldab laohalduril vaadata koondaruannet.';
+
+    
