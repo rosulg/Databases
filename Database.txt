@@ -59,6 +59,15 @@ DROP DOMAIN IF EXISTS ei_koosne_tyhikutest CASCADE
 DROP DOMAIN IF EXISTS reg_aeg_vahemik CASCADE
 ;
 
+DROP FUNCTION IF EXISTS f_lopeta_kaup
+;
+
+DROP FUNCTION IF EXISTS f_muuda_kaup
+;
+
+DROP FUNCTION IF EXISTS f_lisa_kaup
+;
+
 CREATE DOMAIN ei_koosne_tyhikutest AS
 varchar(50) NOT NULL
 CHECK(
@@ -580,7 +589,7 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kaup_kood_1, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus) AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus) AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -616,7 +625,6 @@ p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
 p_tootja_kood Kaup.tootja_kood%TYPE,
 p_reg_isik_id Kaup.reg_isik_id%TYPE,
 p_maht_l Kaup.maht_l%TYPE,
-p_reg_aeg Kaup.reg_aeg%TYPE,
 p_pakk_hind Kaup.pakk_hind%TYPE
 )
 RETURNS Kaup.kaup_kood%TYPE
@@ -641,40 +649,118 @@ p_puidutyyp_kood,
 p_tootja_kood,
 p_reg_isik_id,
 p_maht_l,
-p_reg_aeg,
+default,
 p_pakk_hind
 ) RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
 
-/* Ma lähen kaitseväkke :( ja me oleme pessimistlikud */
-
-CREATE OR REPLACE FUNCTION f_muuda_kaup
-(
-p_kaup_kood_vana Kaup.kaup_kood%TYPE,
-p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+/*
+CREATE OR REPLACE FUNCTION f_lisa_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
 p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
 p_pakend_kood Kaup.pakend_kood%TYPE,
 p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
 p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
 p_maht_l Kaup.maht_l%TYPE,
 p_pakk_hind Kaup.pakk_hind%TYPE
+) RETURNS VOID AS $$
+BEGIN
+INSERT INTO Kaup
+(
+kaup_kood,
+kauba_seisundi_liik_kood,
+pakend_kood,
+puidutyyp_kood,
+tootja_kood,
+reg_isik_id,
+maht_l,
+reg_aeg,
+pakk_hind
+)
+VALUES
+(
+p_kaup_kood,
+p_kauba_seisundi_liik_kood,
+p_pakend_kood,
+p_puidutyyp_kood,
+p_tootja_kood,
+p_reg_isik_id,
+p_maht_l,
+default,
+p_pakk_hind
+);
+END
+$$
+LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+*/
+
+
+
+/* Ma lähen kaitseväkke :( ja me oleme pessimistlikud */
+
+CREATE OR REPLACE FUNCTION f_muuda_kaup
+(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE default null,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE default null,
+p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE default null,
+p_pakend_kood Kaup.pakend_kood%TYPE default null,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE default null,
+p_tootja_kood Kaup.tootja_kood%TYPE default null,
+p_maht_l Kaup.maht_l%TYPE default null,
+p_pakk_hind Kaup.pakk_hind%TYPE default null
 )
 RETURNS Kaup.kaup_kood%TYPE AS $$
 UPDATE Kaup SET
-kaup_kood=p_kaup_kood_uus,
-kauba_seisundi_liik_kood=p_kauba_seisundi_liik_kood,
-pakend_kood=p_pakend_kood,
-puidutyyp_kood=p_puidutyyp_kood,
-tootja_kood=p_tootja_kood,
-maht_l=p_maht_l,
-pakk_hind=p_pakk_hind
+kaup_kood = (
+    SELECT CASE WHEN p_kaup_kood_uus IS NOT NULL THEN p_kaup_kood_uus
+     ELSE
+        (SELECT kaup_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+kauba_seisundi_liik_kood = (
+    SELECT CASE WHEN p_kauba_seisundi_liik_kood IS NOT NULL AND p_kauba_seisundi_liik_kood IN (1, 2) THEN p_kauba_seisundi_liik_kood
+     ELSE
+        (SELECT kauba_seisundi_liik_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+pakend_kood = (
+    SELECT CASE WHEN p_pakend_kood IS NOT NULL THEN p_pakend_kood
+     ELSE
+        (SELECT pakend_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+puidutyyp_kood = (
+    SELECT CASE WHEN p_puidutyyp_kood IS NOT NULL THEN p_puidutyyp_kood
+     ELSE
+        (SELECT puidutyyp_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+tootja_kood = (
+    SELECT CASE WHEN p_tootja_kood IS NOT NULL THEN p_tootja_kood
+     ELSE
+        (SELECT tootja_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+maht_l = (
+    SELECT CASE WHEN p_maht_l IS NOT NULL THEN p_maht_l
+     ELSE
+        (SELECT maht_l from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+),
+pakk_hind = (
+    SELECT CASE WHEN p_pakk_hind IS NOT NULL THEN p_pakk_hind
+     ELSE
+        (SELECT pakk_hind from Kaup WHERE kaup_kood = p_kaup_kood_vana)
+    END
+)
 WHERE kaup_kood=p_kaup_kood_vana
-AND
-p_kauba_seisundi_liik_kood IN (1, 2)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
+
 
 CREATE OR REPLACE FUNCTION f_lopeta_kaup
 (
@@ -689,3 +775,31 @@ AND kauba_seisundi_liik_kood IN (1, 2)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
+
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+UPDATE Isik SET parool = public.crypt(parool,public.gen_salt('bf', 11));
+
+ALTER TABLE Isik DROP CONSTRAINT uq_isik_e_mail;
+CREATE UNIQUE INDEX idx_isik_e_mail_on_unikaalne ON Isik (Upper(e_mail));
+
+CREATE OR REPLACE FUNCTION f_on_laohaldur(p_e_mail text, p_parool text)
+RETURNS boolean AS $$
+DECLARE
+rslt boolean;
+BEGIN
+SELECT INTO rslt (parool = public.crypt(p_parool,
+parool)) FROM Isik INNER JOIN Tootaja ON
+Upper(Isik.e_mail)=Upper(p_e_mail) AND Tootaja.isik_id=Isik.isik_id
+AND tootaja_seisundi_liik_kood IN (1, 2);
+RETURN coalesce(rslt, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE
+SET search_path = public, pg_temp;
+COMMENT ON FUNCTION f_on_laohaldur(p_e_mail text,
+p_parool text) IS 'Selle funktsiooni abil autenditakse
+laohaldurit. Parameetri p_e_mail oodatav v‰‰rtus on
+tıstutundetu e_mail ja p_parool oodatav v‰‰rtus on
+tıstutundlik avatekstiline parool. Laohalduril on ıigus
+s¸steemi siseneda, vaid siis kui tema seisundiks on Tˆˆtab
+vıi Praktikal.';
