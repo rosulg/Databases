@@ -68,6 +68,10 @@ DROP FUNCTION IF EXISTS f_muuda_kaup
 DROP FUNCTION IF EXISTS f_lisa_kaup
 ;
 
+DROP TRIGGER IF EXISTS kaup_insert_trigger ON Kaup;
+
+DROP TRIGGER IF EXISTS kaup_update_trigger ON Kaup;
+
 CREATE DOMAIN ei_koosne_tyhikutest AS
 varchar(50) NOT NULL
 CHECK(
@@ -617,6 +621,9 @@ COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
 /* PUNK 8 FUNKTSIOONID  */
 
 
+/* Ma lähen kaitseväkke :( ja me oleme pessimistlikud */
+
+
 CREATE OR REPLACE FUNCTION f_lisa_kaup (
 p_kaup_kood Kaup.kaup_kood%TYPE,
 p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
@@ -654,52 +661,6 @@ p_pakk_hind
 ) RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
-
-/*
-CREATE OR REPLACE FUNCTION f_lisa_kaup (
-p_kaup_kood Kaup.kaup_kood%TYPE,
-p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
-p_pakend_kood Kaup.pakend_kood%TYPE,
-p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
-p_tootja_kood Kaup.tootja_kood%TYPE,
-p_reg_isik_id Kaup.reg_isik_id%TYPE,
-p_maht_l Kaup.maht_l%TYPE,
-p_pakk_hind Kaup.pakk_hind%TYPE
-) RETURNS VOID AS $$
-BEGIN
-INSERT INTO Kaup
-(
-kaup_kood,
-kauba_seisundi_liik_kood,
-pakend_kood,
-puidutyyp_kood,
-tootja_kood,
-reg_isik_id,
-maht_l,
-reg_aeg,
-pakk_hind
-)
-VALUES
-(
-p_kaup_kood,
-p_kauba_seisundi_liik_kood,
-p_pakend_kood,
-p_puidutyyp_kood,
-p_tootja_kood,
-p_reg_isik_id,
-p_maht_l,
-default,
-p_pakk_hind
-);
-END
-$$
-LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-*/
-
-
-
-/* Ma lähen kaitseväkke :( ja me oleme pessimistlikud */
 
 CREATE OR REPLACE FUNCTION f_muuda_kaup
 (
@@ -803,3 +764,132 @@ tıstutundetu e_mail ja p_parool oodatav v‰‰rtus on
 tıstutundlik avatekstiline parool. Laohalduril on ıigus
 s¸steemi siseneda, vaid siis kui tema seisundiks on Tˆˆtab
 vıi Praktikal.';
+
+
+/* SEDA TRIGGERIT POLE VAJA!
+CREATE OR REPLACE VIEW kaup_vaade AS SELECT kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, cast(reg_aeg as timestamp) reg_aeg, pakk_hind FROM kaup;
+
+CREATE OR REPLACE FUNCTION kaup_tabel_trigger_f() RETURNS TRIGGER AS
+$$
+DECLARE
+  oige_kauba_seisundi_liik_kood smallint;
+begin
+  IF NEW.kauba_seisundi_liik_kood = 1 THEN
+     oige_kauba_seisundi_liik_kood = NEW.kauba_seisundi_liik_kood::smallint;
+  else
+     oige_kauba_seisundi_liik_kood = 1::smallint;
+  end if;
+  INSERT INTO Kaup
+  (
+  kaup_kood,
+  kauba_seisundi_liik_kood,
+  pakend_kood,
+  puidutyyp_kood,
+  tootja_kood,
+  reg_isik_id,
+  maht_l,
+  reg_aeg,
+  pakk_hind
+  )
+  VALUES
+  (
+  NEW.kaup_kood,
+  oige_kauba_seisundi_liik_kood,
+  NEW.pakend_kood,
+  NEW.puidutyyp_kood,
+  NEW.tootja_kood,
+  NEW.reg_isik_id,
+  NEW.maht_l,
+  default,
+  NEW.pakk_hind
+  );
+  return NEW;
+end;
+$$
+language plpgsql;
+
+CREATE TRIGGER tabel_kaup_insert_trigger INSTEAD OF INSERT ON kaup_vaade FOR EACH ROW EXECUTE PROCEDURE kaup_tabel_trigger_f();
+
+
+
+
+POLE VAJA
+/* LISAMISE FUNKTSIOON LÄBI KAUBA VIEW, ET KÄIVITADA TRIGGER */
+CREATE OR REPLACE FUNCTION f_lisa_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE
+AS $$
+INSERT INTO kaup_vaade(
+kaup_kood,
+kauba_seisundi_liik_kood,
+pakend_kood,
+puidutyyp_kood,
+tootja_kood,
+reg_isik_id,
+maht_l,
+reg_aeg,
+pakk_hind
+)
+VALUES
+(
+p_kaup_kood,
+p_kauba_seisundi_liik_kood,
+p_pakend_kood,
+p_puidutyyp_kood,
+p_tootja_kood,
+p_reg_isik_id,
+p_maht_l,
+default,
+p_pakk_hind
+) RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+*/
+
+CREATE OR REPLACE FUNCTION kauba_seisundi_liik_kood_peab_olema_1()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+ IF NEW.kauba_seisundi_liik_kood != 1 THEN
+    RAISE EXCEPTION 'Kaup luuakse ebakorrektses seisundis, uus kaup peab olema seisundis ootel!';
+ END IF;
+ RETURN NEW;
+END;
+$BODY$
+language plpgsql;
+
+CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
+FOR EACH ROW
+EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
+
+
+CREATE OR REPLACE FUNCTION uus_kauba_seisundi_liik_kood_ei_tohi_olla_vana()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+ IF NEW.kauba_seisundi_liik_kood = OLD.kauba_seisundi_liik_kood THEN
+    RAISE EXCEPTION 'Kauba seisundit ei saa samaks uuendada!';
+ END IF;
+ RETURN NEW;
+END;
+$BODY$
+language plpgsql;
+
+
+CREATE TRIGGER kaup_update_trigger BEFORE UPDATE OF
+kauba_seisundi_liik_kood ON Kaup
+FOR EACH ROW
+EXECUTE PROCEDURE uus_kauba_seisundi_liik_kood_ei_tohi_olla_vana();
+
+COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas kaup luuakse korrektses seisundis. Kauba algne seisund peab olema ootel';
+
+COMMENT ON TRIGGER kaup_update_trigger ON Kaup IS 'See trigger kontrollib, kas uus sisestav kauba seisundi liik kood on sama kui vana. Kui on sama, siis uuendamist ei tohi toimuda';
