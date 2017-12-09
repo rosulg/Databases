@@ -59,13 +59,29 @@ DROP DOMAIN IF EXISTS ei_koosne_tyhikutest CASCADE
 DROP DOMAIN IF EXISTS reg_aeg_vahemik CASCADE
 ;
 
-DROP FUNCTION IF EXISTS f_lopeta_kaup
+DROP FUNCTION IF EXISTS f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) CASCADE
 ;
 
-DROP FUNCTION IF EXISTS f_muuda_kaup
+DROP FUNCTION IF EXISTS f_muuda_kaup(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
+) CASCADE
 ;
 
-DROP FUNCTION IF EXISTS f_lisa_kaup
+DROP FUNCTION IF EXISTS  f_registreeri_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+) CASCADE
 ;
 
 DROP TRIGGER IF EXISTS kaup_insert_trigger ON Kaup;
@@ -75,6 +91,44 @@ DROP TRIGGER IF EXISTS kaup_delete_trigger ON Kaup;
 DROP TRIGGER IF EXISTS kaup_insert_trigger_kontrolli_isik ON Kaup;
 
 DROP TRIGGER IF EXISTS kaup_delete_trigger_kontrolli_isik ON Kaup;
+
+DROP FOREIGN TABLE IF EXISTS Isik_jsonb CASCADE;
+
+DROP FOREIGN TABLE IF EXISTS Riik_jsonb CASCADE;
+
+DROP SERVER IF EXISTS minu_testandmete_server_apex CASCADE;
+
+DROP USER MAPPING IF EXISTS FOR t154829 SERVER minu_testandmete_server_apex;
+
+
+DROP VIEW IF EXISTS  CASCADE;
+
+DROP VIEW IF EXISTS public.vaata_koiki_kaupu CASCADE;
+
+DROP VIEW IF EXISTS public.vaata_ootel_ja_mitteaktiivsed_kaupu CASCADE;
+
+DROP VIEW IF EXISTS public.vaata_kaupade_pohiandmeid CASCADE;
+
+DROP INDEX IF EXISTS idx_Tootaja_amet_R_id;
+
+DROP INDEX IF EXISTS idx_fk_Kauba_Kategooria_kauba_kategooria_tyyp_kood;
+DROP INDEX IF EXISTS idx_fk_Isik_isiku_seisundi_liik_kood;
+DROP INDEX IF EXISTS idx_Isik_riik_kood;
+DROP INDEX IF EXISTS idx_Isik_perenimi_eesnimi;
+DROP INDEX IF EXISTS idx_fk_Tootaja_amet_kood;
+DROP INDEX IF EXISTS idx_fk_Tootaja_tootaja_seisundi_liik_kood;
+DROP INDEX IF EXISTS idx_fk_Klient_kliendi_seisundi_liik_kood;
+DROP INDEX IF EXISTS idx_fk_Kaup_kauba_seisundi_liik_kood;
+DROP INDEX IF EXISTS idx_fk_Kaup_pakend_kood;
+DROP INDEX IF EXISTS idx_fk_Kaup_puidutyyp_kood;
+DROP INDEX IF EXISTS idx_fk_Kaup_reg_isik_id;
+DROP INDEX IF EXISTS idx_fk_Kaup_tootja_kood;
+DROP INDEX IF EXISTS idx_fk_Kauba_Kategooria_Omamine_kauba_kategooria_kood;
+
+DROP EXTENSION IF EXISTS pgcrypto CASCADE;
+
+DROP EXTENSION IF EXISTS postgres_fdw CASCADE;
+
 
 CREATE DOMAIN ei_koosne_tyhikutest AS
 varchar(50) NOT NULL
@@ -306,10 +360,10 @@ COMMIT
 
 /* ESIMESED INSERT LAUSED */
 
-INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9321,'Pakkija', 'Inimene, kes tegeleb saepuru pakendamisega');
-INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (1324,'Laojuhataja', 'Inimene, kes vastutab lao toimimise eest');
-INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9329,'Laotooline', 'Inimene, kes tegeleb kaupade valjastamisega');
-INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (4321,'Kaubahaldur', 'Inimene, kes tegeleb kaupade haldamisega');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9321,'Pakkija', 'Pakkija ametialane ulesanne on komplekteerida muugiks minevat kaupa. Samuti umber pakkida kahjustunud ja/voi vananenud pakendiga kaupa.');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (1324,'Laojuhataja', 'Laojuhataja ametialane ulesanne on lao juhatamine, tootajate too kontrollimine, nende eest vastutamine ja laoseisu haldamine.');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9329,'Laotooline', 'Laotoolise ametialane ulesanne on valjastada klientidele kaupa, komplekteerida tellimusi ning hoida korda laoruumides.');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (4321,'Kaubahaldur', 'Kaubahalduri ametialane ulesanne on vastutada laoseisu korrektses, redigeerida kaupade andmeid, vastutada kaupade andmete õigsuse eest, sisestada muudatusi.');
 
 INSERT INTO Tootja (tootja_kood, nimetus) VALUES (1111, 'Graanul Invest OU');
 INSERT INTO Tootja (tootja_kood, nimetus) VALUES (2222, 'AST Saeveski');
@@ -355,7 +409,6 @@ INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (4, '
 
 /*  MINU TESTANDMETE SERVER */
 
-/*
 CREATE EXTENSION IF NOT EXISTS postgres_fdw;
 /*Lisan andmebaasi väliste andmete pakendamise laienduse, mis
 võimaldab PostgreSQL andmebaasis lugeda andmeid teisest
@@ -368,23 +421,21 @@ on teistes andmebaasides (võimalik, et teine
 andmebaasisüsteem/andmemudel), veebis, infokataloogides jne.
 Vaadake PostgreSQL erinevaid väliste andmete pakendajaid:
 https://wiki.postgresql.org/wiki/Foreign_data_wrappers */
+
 CREATE SERVER minu_testandmete_server_apex FOREIGN DATA WRAPPER
 postgres_fdw OPTIONS (host 'apex.ttu.ee', dbname 'testandmed',
 port '5432');
+
 /*Testandmed on apex.ttu.ee serveris andmebaasis testandmed.*/
 
 CREATE USER MAPPING FOR t154829 SERVER
 minu_testandmete_server_apex OPTIONS (user 't154829', password
 'pgdeploy');
-*/
 
-/*
 
 CREATE FOREIGN TABLE Riik_jsonb (
 riik JSONB )
 SERVER minu_testandmete_server_apex;
-
-*/
 
 /*Loon välise tabeli, mis viitab teises andmebaasis olevale
 tabelile, kus riikide andmed on JSON formaadis. Lähteandmed
@@ -404,11 +455,9 @@ Koodinäiteid ja viiteid PostgreSQLis JSON formaadis andmetega
 töötamise kohta vaadake slaidikomplektist "Andmebaasisüsteemide
 Oracle ja PostgreSQL kasutamine" – otsige sealt sõna JSON.*/
 
-/*
 CREATE FOREIGN TABLE Isik_jsonb (
 isik JSONB )
 SERVER minu_testandmete_server_apex;
-*/
 
 /* TESTANDMED ISIK_JSONB TABELIST */
 
@@ -560,10 +609,11 @@ SELECT kaup.kaup_kood AS Kaup_kood,
    kaup.reg_aeg AS Reg_aeg,
    kauba_seisundi_liik.nimetus AS Seisundi_liik
   FROM tootja
-    JOIN (puidutyyp
-    JOIN (pakend
-    JOIN (kauba_seisundi_liik
-    JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
+    JOIN (puidutyyp JOIN
+(pakend JOIN
+    (kauba_seisundi_liik JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
+    ON pakend.pakend_kood = kaup.pakend_kood)
+ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
  WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 2]);
 
 ALTER TABLE public.vaata_ootel_ja_mitteaktiivsed_kaupu
@@ -598,7 +648,7 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, string_agg(coalesce(Kauba_kategooria.nimetus,'määramata'), ', ' ORDER BY Kauba_kategooria.nimetus) AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), '') AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -625,13 +675,8 @@ COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
 
 /* PUNK 8 FUNKTSIOONID  */
 
-
-/* Ma lähen kaitseväkke :( ja me oleme pessimistlikud */
-
-
-CREATE OR REPLACE FUNCTION f_lisa_kaup (
+CREATE OR REPLACE FUNCTION f_registreeri_kaup (
 p_kaup_kood Kaup.kaup_kood%TYPE,
-p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
 p_pakend_kood Kaup.pakend_kood%TYPE,
 p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
 p_tootja_kood Kaup.tootja_kood%TYPE,
@@ -655,7 +700,7 @@ pakk_hind
 VALUES
 (
 p_kaup_kood,
-p_kauba_seisundi_liik_kood,
+1,
 p_pakend_kood,
 p_puidutyyp_kood,
 p_tootja_kood,
@@ -668,96 +713,50 @@ $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
 
 
+COMMENT ON FUNCTION f_registreeri_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+) IS 'Selle funktsiooni abil saab lisada andmebaasi uue kauba.  Funktsioon realiseerib andmebaasioperatsiooni number 1. Parameetri p_kaup_kood oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_reg_isik_id oodatav väärtus on registreerinud isiku id identifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
+
 
 CREATE OR REPLACE FUNCTION f_muuda_kaup
 (
 p_kaup_kood_vana Kaup.kaup_kood%TYPE,
 p_kaup_kood_uus Kaup.kaup_kood%TYPE,
-p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
-p_pakend_kood Kaup.pakend_kood%TYPE,
-p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
-p_tootja_kood Kaup.tootja_kood%TYPE,
-p_maht_l Kaup.maht_l%TYPE,
-p_pakk_hind Kaup.pakk_hind%TYPE
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
 )
 RETURNS Kaup.kaup_kood%TYPE AS $$
 UPDATE Kaup SET
 kaup_kood=p_kaup_kood_uus,
-kauba_seisundi_liik_kood=p_kauba_seisundi_liik_kood,
-pakend_kood=p_pakend_kood,
-puidutyyp_kood=p_puidutyyp_kood,
-tootja_kood=p_tootja_kood,
-maht_l=p_maht_l,
-pakk_hind=p_pakk_hind
+pakend_kood=p_pakend_kood_uus,
+puidutyyp_kood=p_puidutyyp_kood_uus,
+tootja_kood=p_tootja_kood_uus,
+maht_l=p_maht_l_uus,
+pakk_hind=p_pakk_hind_uus
 WHERE kaup_kood=p_kaup_kood_vana
+AND kauba_seisundi_liik_kood IN (1, 2)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
 
-
-/*
-
-CREATE OR REPLACE FUNCTION f_muuda_kaup
-(
-p_kaup_kood_vana Kaup.kaup_kood%TYPE default null,
-p_kaup_kood_uus Kaup.kaup_kood%TYPE default null,
-p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE default null,
-p_pakend_kood Kaup.pakend_kood%TYPE default null,
-p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE default null,
-p_tootja_kood Kaup.tootja_kood%TYPE default null,
-p_maht_l Kaup.maht_l%TYPE default null,
-p_pakk_hind Kaup.pakk_hind%TYPE default null
-)
-RETURNS Kaup.kaup_kood%TYPE AS $$
-UPDATE Kaup SET
-kaup_kood = (
-    SELECT CASE WHEN p_kaup_kood_uus IS NOT NULL THEN p_kaup_kood_uus
-     ELSE
-        (SELECT kaup_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-kauba_seisundi_liik_kood = (
-    SELECT CASE WHEN p_kauba_seisundi_liik_kood IS NOT NULL AND p_kauba_seisundi_liik_kood IN (1, 2) THEN p_kauba_seisundi_liik_kood
-     ELSE
-        (SELECT kauba_seisundi_liik_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-pakend_kood = (
-    SELECT CASE WHEN p_pakend_kood IS NOT NULL THEN p_pakend_kood
-     ELSE
-        (SELECT pakend_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-puidutyyp_kood = (
-    SELECT CASE WHEN p_puidutyyp_kood IS NOT NULL THEN p_puidutyyp_kood
-     ELSE
-        (SELECT puidutyyp_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-tootja_kood = (
-    SELECT CASE WHEN p_tootja_kood IS NOT NULL THEN p_tootja_kood
-     ELSE
-        (SELECT tootja_kood from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-maht_l = (
-    SELECT CASE WHEN p_maht_l IS NOT NULL THEN p_maht_l
-     ELSE
-        (SELECT maht_l from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-),
-pakk_hind = (
-    SELECT CASE WHEN p_pakk_hind IS NOT NULL THEN p_pakk_hind
-     ELSE
-        (SELECT pakk_hind from Kaup WHERE kaup_kood = p_kaup_kood_vana)
-    END
-)
-WHERE kaup_kood=p_kaup_kood_vana
-RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-
-*/
+COMMENT ON FUNCTION f_muuda_kaup(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
+) IS 'Selle Funktsiooni abil saab muuta kauba andmeid. Funktsioon realiseerib andmebaasioperatsiooni number 6. Parameetri p_kaup_kood_vana oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_kaup_kood_uus oodatav väärtus on muudetava kauba koodi uus väärtus, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
 
 
 CREATE OR REPLACE FUNCTION f_lopeta_kaup
@@ -769,10 +768,12 @@ UPDATE Kaup SET
 kaup_kood=p_kaup_kood,
 kauba_seisundi_liik_kood=4
 WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood IN (1, 2)
+AND kauba_seisundi_liik_kood IN (2, 3)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
+
+COMMENT ON FUNCTION f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab lõpetada kaupa. Funktsioon realiseerib andmebaasioperatsiooni number 5. Parameetri p_kaup_kood oodatav väärtus on kauba identifikaator.';
 
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
@@ -802,97 +803,6 @@ tõstutundlik avatekstiline parool. Laojuhatajal on õigus
 süsteemi siseneda, vaid siis kui tema seisundiks on Töötab
 või Praktikal.';
 
-
-/* SEDA TRIGGERIT POLE VAJA!
-CREATE OR REPLACE VIEW kaup_vaade AS SELECT kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, cast(reg_aeg as timestamp) reg_aeg, pakk_hind FROM kaup;
-
-CREATE OR REPLACE FUNCTION kaup_tabel_trigger_f() RETURNS TRIGGER AS
-$$
-DECLARE
-  oige_kauba_seisundi_liik_kood smallint;
-begin
-  IF NEW.kauba_seisundi_liik_kood = 1 THEN
-     oige_kauba_seisundi_liik_kood = NEW.kauba_seisundi_liik_kood::smallint;
-  else
-     oige_kauba_seisundi_liik_kood = 1::smallint;
-  end if;
-  INSERT INTO Kaup
-  (
-  kaup_kood,
-  kauba_seisundi_liik_kood,
-  pakend_kood,
-  puidutyyp_kood,
-  tootja_kood,
-  reg_isik_id,
-  maht_l,
-  reg_aeg,
-  pakk_hind
-  )
-  VALUES
-  (
-  NEW.kaup_kood,
-  oige_kauba_seisundi_liik_kood,
-  NEW.pakend_kood,
-  NEW.puidutyyp_kood,
-  NEW.tootja_kood,
-  NEW.reg_isik_id,
-  NEW.maht_l,
-  default,
-  NEW.pakk_hind
-  );
-  return NEW;
-end;
-$$
-language plpgsql;
-
-CREATE TRIGGER tabel_kaup_insert_trigger INSTEAD OF INSERT ON kaup_vaade FOR EACH ROW EXECUTE PROCEDURE kaup_tabel_trigger_f();
-
-
-
-
-POLE VAJA
-/* LISAMISE FUNKTSIOON LÄBI KAUBA VIEW, ET KÄIVITADA TRIGGER */
-CREATE OR REPLACE FUNCTION f_lisa_kaup (
-p_kaup_kood Kaup.kaup_kood%TYPE,
-p_kauba_seisundi_liik_kood Kaup.kauba_seisundi_liik_kood%TYPE,
-p_pakend_kood Kaup.pakend_kood%TYPE,
-p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
-p_tootja_kood Kaup.tootja_kood%TYPE,
-p_reg_isik_id Kaup.reg_isik_id%TYPE,
-p_maht_l Kaup.maht_l%TYPE,
-p_pakk_hind Kaup.pakk_hind%TYPE
-)
-RETURNS Kaup.kaup_kood%TYPE
-AS $$
-INSERT INTO kaup_vaade(
-kaup_kood,
-kauba_seisundi_liik_kood,
-pakend_kood,
-puidutyyp_kood,
-tootja_kood,
-reg_isik_id,
-maht_l,
-reg_aeg,
-pakk_hind
-)
-VALUES
-(
-p_kaup_kood,
-p_kauba_seisundi_liik_kood,
-p_pakend_kood,
-p_puidutyyp_kood,
-p_tootja_kood,
-p_reg_isik_id,
-p_maht_l,
-default,
-p_pakk_hind
-) RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-
-*/
-
---when clause...
 
 CREATE OR REPLACE FUNCTION kauba_seisundi_liik_kood_peab_olema_1()
   RETURNS trigger AS
@@ -968,3 +878,67 @@ COMMENT ON TRIGGER kaup_delete_trigger ON Kaup IS 'See trigger kontrollib, kas e
 COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa uuendab õigel ametikohal olev isik';
 
 COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa lisab õigel ametikohal olev isik';
+
+COMMENT ON TABLE Amet IS 'Kuna ametite kirjeldust võidakse hiljem muuta, siis määrame tabeli plokkidesse vaba ruumi 10% ulatuses (fillfactor=90)';
+
+COMMENT ON TABLE Isik IS 'Kuna isikutega seotud anmeid võidakse muuta, siis määrame tabeli plokkidesse vaba ruumi 10% ulatuses (fillfactor=90)';
+
+--VACUUM ANALYZE;
+
+ANALYZE;
+EXPLAIN SELECT * FROM vaata_ootel_ja_mitteaktiivsed_kaupu;
+
+REASSIGN OWNED BY laojuhataja TO postgres;
+
+REVOKE CREATE, USAGE ON SCHEMA public FROM PUBLIC;
+
+REVOKE USAGE ON LANGUAGE plpgsql FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION
+f_muuda_kaup(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
+),
+f_registreeri_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+),
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+FROM PUBLIC;
+
+--REVOKE CONNECT ON DATABASE t154829_SAEPURU_PROJEKT FROM laojuhataja;
+
+REVOKE USAGE ON SCHEMA public FROM laojuhataja;
+
+REVOKE SELECT ON
+vaata_koiki_kaupu,
+vaata_ootel_ja_mitteaktiivsed_kaupu,
+vaata_kaupade_pohiandmeid
+FROM laojuhataja;
+
+DROP USER IF EXISTS laojuhataja;
+
+CREATE USER laojuhataja WITH PASSWORD '1337';
+
+
+--GRANT CONNECT ON DATABASE t154829_SAEPURU_PROJEKT TO laojuhataja;
+
+GRANT USAGE ON SCHEMA public TO laojuhataja;
+
+GRANT SELECT ON
+vaata_koiki_kaupu,
+vaata_ootel_ja_mitteaktiivsed_kaupu,
+vaata_kaupade_pohiandmeid
+TO laojuhataja;
+
+--tuleb kirjutada seletavad laused ühe nii-öelda analyzei kohta
