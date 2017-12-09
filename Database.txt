@@ -72,6 +72,10 @@ DROP TRIGGER IF EXISTS kaup_insert_trigger ON Kaup;
 
 DROP TRIGGER IF EXISTS kaup_delete_trigger ON Kaup;
 
+DROP TRIGGER IF EXISTS kaup_insert_trigger_kontrolli_isik ON Kaup;
+
+DROP TRIGGER IF EXISTS kaup_delete_trigger_kontrolli_isik ON Kaup;
+
 CREATE DOMAIN ei_koosne_tyhikutest AS
 varchar(50) NOT NULL
 CHECK(
@@ -902,10 +906,47 @@ CREATE OR REPLACE FUNCTION kustutada_ei_voi_kaupa_kauba_seisundi_liik_koodiga_1(
   RETURNS trigger AS
 $BODY$
 BEGIN
-    RAISE EXCEPTION 'Ootel kaupa ei tohi kustuada!';
+    RAISE EXCEPTION 'Ootel kaupa ei tohi kustutada!';
 END;
 $BODY$
 language plpgsql;
+
+
+CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_lisada()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+    PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=NEW.reg_isik_id and tootaja_seisundi_liik_kood IN (1, 2);
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Isikul ei ole oigust kaupa lisada! Peab olema kaubahaldur';
+    END IF;
+    RETURN NEW;
+END;
+$BODY$
+language plpgsql;
+
+
+CREATE TRIGGER kaup_insert_trigger_kontrolli_isik BEFORE INSERT ON Kaup
+FOR EACH ROW
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_lisada();
+
+CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_uuendada()
+  RETURNS trigger AS
+$BODY$
+BEGIN
+   PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=coalesce(NEW.reg_isik_id, OLD.reg_isik_id) and tootaja_seisundi_liik_kood IN (1, 2);
+   IF NOT FOUND THEN
+     RAISE EXCEPTION 'Isikul ei ole oigust kaupa uuendada! Peab olema kaubahaldur';
+   END IF;
+   RETURN NEW;
+END;
+$BODY$
+language plpgsql;
+
+
+CREATE TRIGGER kaup_update_trigger_kontrolli_isik BEFORE UPDATE ON Kaup
+FOR EACH ROW
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_uuendada();
 
 CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
 FOR EACH ROW
@@ -919,7 +960,10 @@ FOR EACH ROW
 WHEN (OLD.kauba_seisundi_liik_kood=1)
 EXECUTE PROCEDURE kustutada_ei_voi_kaupa_kauba_seisundi_liik_koodiga_1();
 
-
 COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas kaup luuakse korrektses seisundis. Kauba algne seisund peab olema ootel';
 
 COMMENT ON TRIGGER kaup_delete_trigger ON Kaup IS 'See trigger kontrollib, kas ei ole kauba kustutamisel kauba seisundi liik kood 1, ehk ootel';
+
+COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa uuendab õigel ametikohal olev isik';
+
+COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa lisab õigel ametikohal olev isik';
