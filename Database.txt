@@ -523,7 +523,7 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
     ALTER TABLE public.vaata_koiki_kaupu
         OWNER TO t154829;
     COMMENT ON VIEW public.vaata_koiki_kaupu
-        IS 'Voimaldab laohalduril vaadata koiki kaupu.';
+        IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna ja seisundiliigi kohta. Vaade on vajalik laojuhtajale, et näha terviklikku pilti andmebaasi registreeritud kaupadest.';
 
 /* VIRTUAALVAADE #2 VAATA AKTIIVSEID && MITTEAKTIIVSEID KAUPE LÄBI PGADMINI CREATE VIEW */
 
@@ -560,12 +560,12 @@ SELECT kaup.kaup_kood AS Kaup_kood,
     JOIN (pakend
     JOIN (kauba_seisundi_liik
     JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
- WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 3]);
+ WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 2]);
 
-ALTER TABLE public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
+ALTER TABLE public.vaata_ootel_ja_mitteaktiivsed_kaupu
     OWNER TO t154829;
-COMMENT ON VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
-    IS 'Voimaldab laohalduril vaadata aktiivseid- ja mitteaktiivseid kaupu.';
+COMMENT ON VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu
+    IS 'Vaade leiab andmed kaupade kohta, mille seisundi liik on "ootel" või “mitteaktiivne”. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna, registreerimise aja ja seisundiliigi kohta. Vaade on vajalik kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid';
 
  /* VIRTUAALVAADE #3 koondaruanne */
 
@@ -617,7 +617,7 @@ GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyy
 ALTER TABLE public.vaata_kaupade_pohiandmeid
     OWNER TO t154829;
 COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
-    IS 'Voimaldab laohalduril vaadata koondaruannet.';
+    IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse kaupade detailandmed, kus on nähaks tavaandmetele ka kauba registreerinud isiku eesnimi, perekonnanimi ja e-maili aadress. Vaade on mõeldud kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid.';
 
 /* PUNK 8 FUNKTSIOONID  */
 
