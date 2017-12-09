@@ -214,7 +214,7 @@ CREATE TABLE Isik
 	CONSTRAINT chk_Isik_e_mail_sisaldab_at_marki CHECK (e_mail LIKE '%@%'),
 	CONSTRAINT chk_Isik_isikukood_ei_koosne_tyhikutest CHECK (isikukood!~'^[[:space:]]*$'),
 	CONSTRAINT chk_Isik_synni_kp_vaiksem_reg_ajast CHECK (synni_kp <= reg_aeg),
-	CONSTRAINT chk_Isik_eesnimi_voi_perekonnanimi CHECK (eesnimi IS NOT NULL OR perenimi IS NOT NULL),
+	CONSTRAINT chk_Isik_eesnimi_voi_perenimi_peab_olema_maaratud CHECK (eesnimi IS NOT NULL OR perenimi IS NOT NULL),
 	CONSTRAINT chk_Isik_eesnimi_ei_koosne_tyhikutest CHECK (eesnimi!~'^[[:space:]]*$'),
 	CONSTRAINT chk_Isik_perenimi_ei_koosne_tyhikutest CHECK (perenimi!~'^[[:space:]]*$'),
 	CONSTRAINT chk_Isik_elukoht_ei_koosne_tyhikutest CHECK (elukoht!~'^[[:space:]]*$'),
@@ -304,7 +304,8 @@ COMMIT
 
 INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9321,'Pakkija', 'Inimene, kes tegeleb saepuru pakendamisega');
 INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (1324,'Laojuhataja', 'Inimene, kes vastutab lao toimimise eest');
-INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9329,'Laotooline', 'Inimene, kes tegeleb kaupade v‰ljastamisega');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (9329,'Laotooline', 'Inimene, kes tegeleb kaupade valjastamisega');
+INSERT INTO Amet (amet_kood, nimetus, kirjeldus) VALUES (4321,'Kaubahaldur', 'Inimene, kes tegeleb kaupade haldamisega');
 
 INSERT INTO Tootja (tootja_kood, nimetus) VALUES (1111, 'Graanul Invest OU');
 INSERT INTO Tootja (tootja_kood, nimetus) VALUES (2222, 'AST Saeveski');
@@ -432,7 +433,7 @@ WHERE isiku_seisundi_liik_kood::smallint=1;
 /* TEISED INSERT LAUSED */
 
 INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (1, 1324, 1);
-INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (2, 9321, 2);
+INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (2, 4321, 1);
 INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (3, 9329, 1);
 INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (4, 9329, 2);
 INSERT INTO Tootaja (isik_id, amet_kood, tootaja_seisundi_liik_kood) VALUES (5, 9321, 4);
@@ -451,16 +452,16 @@ INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) V
 INSERT INTO Klient (isik_id, kliendi_seisundi_liik_kood, on_nous_tylitamisega) VALUES (17, 2, default);
 
 INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
-VALUES (1111111, 1, 1, 1, 1111, 1, 20,default, 100.50);
+VALUES (1111111, 1, 1, 1, 1111, 2, 20,default, 100.50);
 
 INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
-VALUES (2222222, 2, 2, 2, 2222, 1, 50.3,default, 200.99);
+VALUES (2222222, 2, 2, 2, 2222, 2, 50.3,default, 200.99);
 
 INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
-VALUES (3333333, 3, 3, 3, 3333, 1, 30,default, 120.50);
+VALUES (3333333, 3, 3, 3, 3333, 2, 30,default, 120.50);
 
 INSERT INTO Kaup (kaup_kood, kauba_seisundi_liik_kood, pakend_kood, puidutyyp_kood, tootja_kood, reg_isik_id, maht_l, reg_aeg, pakk_hind)
-VALUES (4444444, 4, 3, 4, 1111, 1, 30,default, 130.55);
+VALUES (4444444, 4, 3, 4, 1111, 2, 30,default, 130.55);
 
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 11);
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (1111111, 21);
@@ -545,7 +546,7 @@ SELECT kaup.kaup_kood AS Kaup_kood,
  */
 
 
- CREATE OR REPLACE VIEW public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu WITH (security_barrier) AS
+ CREATE OR REPLACE VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu WITH (security_barrier) AS
 SELECT kaup.kaup_kood AS Kaup_kood,
    puidutyyp.nimetus AS Puidutyyp,
    tootja.nimetus AS Tootja,
@@ -559,7 +560,7 @@ SELECT kaup.kaup_kood AS Kaup_kood,
     JOIN (pakend
     JOIN (kauba_seisundi_liik
     JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
- WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[2, 3]);
+ WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 3]);
 
 ALTER TABLE public.vaata_aktiivseid_ja_mitteaktiivsed_kaupu
     OWNER TO t154829;
