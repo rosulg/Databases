@@ -598,7 +598,7 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus) AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, string_agg(coalesce(Kauba_kategooria.nimetus,'määramata'), ', ' ORDER BY Kauba_kategooria.nimetus) AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
