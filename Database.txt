@@ -576,8 +576,11 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
        kaup.maht_l AS Maht_l,
        pakend.nimetus AS Pakend,
        kaup.pakk_hind AS Paki_hind,
-       kauba_seisundi_liik.nimetus AS Seisundi_liik
-      FROM tootja
+       kauba_seisundi_liik.nimetus AS Seisundi_liik,
+	   isik.e_mail AS Registreerija,
+	   kaup.reg_aeg AS Registreerimise_aeg
+	  FROM Isik
+		JOIN (tootja
         JOIN (puidutyyp
         JOIN (pakend
         JOIN (kauba_seisundi_liik
@@ -585,9 +588,10 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
         ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
         ON pakend.pakend_kood = kaup.pakend_kood)
         ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood)
-        ON tootja.tootja_kood = kaup.tootja_kood
+        ON tootja.tootja_kood = kaup.tootja_kood)
+		ON isik.isik_id = kaup.reg_isik_id
         ORDER BY kaup.kaup_kood;
-
+v
     ALTER TABLE public.vaata_koiki_kaupu
         OWNER TO t154829;
     COMMENT ON VIEW public.vaata_koiki_kaupu
@@ -663,7 +667,8 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), '') AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja, 
+Kauba_kategooria_tyyp.nimetus AS Tyyp, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus, 'Puudub')) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -681,7 +686,8 @@ ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
 ON Pakend.pakend_kood = Kaup.pakend_kood)
 ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
 ON Tootja.tootja_kood = Kaup.tootja_kood
-GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus, Kaup.pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail;
+GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus, 
+Kaup.pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail;
 
 ALTER TABLE public.vaata_kaupade_pohiandmeid
     OWNER TO t154829;
