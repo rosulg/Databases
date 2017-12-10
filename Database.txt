@@ -62,6 +62,21 @@ DROP DOMAIN IF EXISTS reg_aeg_vahemik CASCADE
 DROP FUNCTION IF EXISTS f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) CASCADE
 ;
 
+DROP FUNCTION IF EXISTS f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) CASCADE
+;
+
+DROP FUNCTION IF EXISTS f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) CASCADE
+;
+
+DROP FUNCTION IF EXISTS f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) CASCADE
+;
+
+DROP FUNCTION IF EXISTS f_on_laojuhataja(p_e_mail text, p_parool text) CASCADE
+;
+
+DROP FUNCTION IF EXISTS f_lisa_kaup_kategooriasse(p_e_mail text, p_parool text) CASCADE
+;
+
 DROP FUNCTION IF EXISTS f_muuda_kaup(
 p_kaup_kood_vana Kaup.kaup_kood%TYPE,
 p_kaup_kood_uus Kaup.kaup_kood%TYPE,
@@ -916,7 +931,7 @@ p_pakk_hind Kaup.pakk_hind%TYPE
 f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
 FROM PUBLIC;
 
---REVOKE CONNECT ON DATABASE t154829_SAEPURU_PROJEKT FROM laojuhataja;
+REVOKE CONNECT ON DATABASE "t154829_SAEPURU_PROJEKT" FROM laojuhataja;
 
 REVOKE USAGE ON SCHEMA public FROM laojuhataja;
 
@@ -931,7 +946,7 @@ DROP USER IF EXISTS laojuhataja;
 CREATE USER laojuhataja WITH PASSWORD '1337';
 
 
---GRANT CONNECT ON DATABASE t154829_SAEPURU_PROJEKT TO laojuhataja;
+GRANT CONNECT ON DATABASE "t154829_SAEPURU_PROJEKT" TO laojuhataja;
 
 GRANT USAGE ON SCHEMA public TO laojuhataja;
 
@@ -942,3 +957,78 @@ vaata_kaupade_pohiandmeid
 TO laojuhataja;
 
 --tuleb kirjutada seletavad laused ühe nii-öelda analyzei kohta
+
+
+CREATE OR REPLACE FUNCTION f_unusta_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+DELETE FROM Kaup
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=2
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+COMMENT ON FUNCTION f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kustudada kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
+
+CREATE OR REPLACE FUNCTION f_aktiveeri_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=3
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood IN (1, 2)
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+COMMENT ON FUNCTION f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab aktiveerida kaupa, mille seisundi liik kood on eelnevalt kas 1 või 2, ehk seisundis ootel või mitteaktiivne.';
+
+CREATE OR REPLACE FUNCTION f_muuda_kaup_mitteaktiivseks
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=2
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=3
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+COMMENT ON FUNCTION f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kaupa määrata mitteaktiivseks, mille seisundi liik kood on eelnevalt 3, ehk seisundis aktiivne.';
+
+CREATE OR REPLACE FUNCTION f_lisa_kaup_kategooriasse
+(
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE
+)
+RETURNS BOOLEAN AS
+$BODY$
+BEGIN
+  PERFORM kaup_kood FROM Kaup WHERE kaup_kood=p_kaup_kood AND kauba_seisundi_liik_kood IN (1, 2);
+  IF FOUND THEN
+      INSERT INTO Kauba_kategooria_omamine(
+      kaup_kood,
+      kauba_kategooria_kood
+      )
+      VALUES
+      (
+      p_kaup_kood,
+      p_kauba_kategooria_kood
+      );
+      RETURN TRUE;
+  END IF;
+  RETURN FALSE;
+END;
+$BODY$ LANGUAGE plpgsql
+SET search_path=public, pg_temp;
+
+COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
