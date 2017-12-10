@@ -401,12 +401,12 @@ INSERT INTO Kauba_kategooria_tyyp (kauba_kategooria_tyyp_kood, nimetus) VALUES (
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (11, 1, 'Ehitus');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (12, 1, 'Tarbe');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (21, 1, 'Kodumaine');
-INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (22, 1, 'V‰lismaine');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (22, 1, 'Valismaine');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (31, 1, 'Kemikaalivaba');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (32, 1, 'Kemikaalidega');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (41, 1, 'Kuiv');
 INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (42, 1, 'Niiske');
-INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (43, 1, 'M‰rg');
+INSERT INTO Kauba_kategooria (kauba_kategooria_kood, kauba_kategooria_tyyp_kood, nimetus) VALUES (43, 1, 'Marg');
 
 INSERT INTO Isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus) VALUES (1, 'Elus');
 INSERT INTO Isiku_seisundi_liik (isiku_seisundi_liik_kood, nimetus) VALUES (2, 'Surnud');
