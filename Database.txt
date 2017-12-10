@@ -668,7 +668,8 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
 SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja, 
-Kauba_kategooria_tyyp.nimetus AS Tyyp, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus, 'Puudub')) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Tyyp, 
+COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -677,10 +678,10 @@ INNER JOIN (Kaup
 INNER JOIN Isik
 ON Kaup.reg_isik_id = Isik.isik_id)
 ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
-INNER JOIN ((Kauba_kategooria_tyyp
-INNER JOIN Kauba_kategooria
+LEFT JOIN ((Kauba_kategooria_tyyp
+LEFT JOIN Kauba_kategooria
 ON Kauba_kategooria_tyyp.kauba_kategooria_tyyp_kood = Kauba_kategooria.kauba_kategooria_tyyp_kood)
-INNER JOIN Kauba_kategooria_omamine
+LEFT JOIN Kauba_kategooria_omamine
 ON Kauba_kategooria.kauba_kategooria_kood = Kauba_kategooria_omamine.kauba_kategooria_kood)
 ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
 ON Pakend.pakend_kood = Kaup.pakend_kood)
