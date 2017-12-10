@@ -828,11 +828,11 @@ END;
 $BODY$
 language plpgsql;
 
-CREATE OR REPLACE FUNCTION kustutada_ei_voi_kaupa_kauba_seisundi_liik_koodiga_1()
+CREATE OR REPLACE FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1()
   RETURNS trigger AS
 $BODY$
 BEGIN
-    RAISE EXCEPTION 'Ootel kaupa ei tohi kustutada!';
+    RAISE EXCEPTION 'Ainult ootel kaupa tohib kustutada!';
 END;
 $BODY$
 language plpgsql;
@@ -856,13 +856,13 @@ CREATE TRIGGER kaup_insert_trigger_kontrolli_isik BEFORE INSERT ON Kaup
 FOR EACH ROW
 EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_lisada();
 
-CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_uuendada()
+CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kauba_andmeid_muuta()
   RETURNS trigger AS
 $BODY$
 BEGIN
    PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=coalesce(NEW.reg_isik_id, OLD.reg_isik_id) and tootaja_seisundi_liik_kood IN (1, 2);
    IF NOT FOUND THEN
-     RAISE EXCEPTION 'Isikul ei ole oigust kaupa uuendada! Peab olema kaubahaldur';
+     RAISE EXCEPTION 'Isikul ei ole oigust kauba andmeid muuta! Peab olema kaubahaldur';
    END IF;
    RETURN NEW;
 END;
@@ -872,14 +872,14 @@ language plpgsql;
 
 CREATE TRIGGER kaup_update_trigger_kontrolli_isik BEFORE UPDATE ON Kaup
 FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_uuendada();
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kauba_andmeid_muuta();
 
 CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
 FOR EACH ROW
 WHEN (NOT (NEW.kauba_seisundi_liik_kood=1))
 EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
 
-/* kui üritan kustutada kaupa, mis on seisundil ootel... siis see ei ole võimalik */
+/* kui üritan kustutada kaupa, mis on seisundil ootel, siis see on võimalik */
 
 CREATE TRIGGER kaup_delete_trigger BEFORE DELETE ON Kaup
 FOR EACH ROW
@@ -890,7 +890,7 @@ COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas k
 
 COMMENT ON TRIGGER kaup_delete_trigger ON Kaup IS 'See trigger kontrollib, kas ei ole kauba kustutamisel kauba seisundi liik kood 1, ehk ootel';
 
-COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa uuendab õigel ametikohal olev isik';
+COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kauba andmeid muudab õigel ametikohal olev isik';
 
 COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa lisab õigel ametikohal olev isik';
 
@@ -966,7 +966,7 @@ p_kaup_kood Kaup.kaup_kood%TYPE
 RETURNS Kaup.kaup_kood%TYPE AS $$
 DELETE FROM Kaup
 WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood=2
+AND kauba_seisundi_liik_kood=1
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
