@@ -99,6 +99,12 @@ p_pakk_hind Kaup.pakk_hind%TYPE
 ) CASCADE
 ;
 
+DROP FUNCTION IF EXISTS kauba_seisundi_liik_kood_peab_olema_1();
+
+DROP FUNCTION IF EXISTS kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1();
+
+DROP FUNCTION IF EXISTS isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
+
 DROP TRIGGER IF EXISTS kaup_insert_trigger ON Kaup;
 
 DROP TRIGGER IF EXISTS kaup_delete_trigger ON Kaup;
@@ -119,19 +125,17 @@ DROP VIEW IF EXISTS  CASCADE;
 
 DROP VIEW IF EXISTS public.vaata_koiki_kaupu CASCADE;
 
-DROP VIEW IF EXISTS public.vaata_ootel_ja_mitteaktiivsed_kaupu CASCADE;
+DROP VIEW IF EXISTS public.vaata_ootel_mitteaktiivsed_kaupu CASCADE;
 
 DROP VIEW IF EXISTS public.vaata_kaupade_pohiandmeid CASCADE;
 
 DROP VIEW IF EXISTS public.vaata_aktiivsed_mitteaktiivsed_kaupu CASCADE;
 
-DROP VIEW IF EXISTS public.vaata_koondaruannet CASCADE;
-
-DROP INDEX IF EXISTS idx_Tootaja_amet_R_id;
+DROP VIEW IF EXISTS public.vaata_kaupade_koondaruannet CASCADE;
 
 DROP INDEX IF EXISTS idx_fk_Kauba_Kategooria_kauba_kategooria_tyyp_kood;
 DROP INDEX IF EXISTS idx_fk_Isik_isiku_seisundi_liik_kood;
-DROP INDEX IF EXISTS idx_Isik_riik_kood;
+DROP INDEX IF EXISTS idx_fk_Isik_riik_kood;
 DROP INDEX IF EXISTS idx_Isik_perenimi_eesnimi;
 DROP INDEX IF EXISTS idx_fk_Tootaja_amet_kood;
 DROP INDEX IF EXISTS idx_fk_Tootaja_tootaja_seisundi_liik_kood;
@@ -336,10 +340,10 @@ CREATE TABLE Kaup
 	reg_aeg reg_aeg_vahemik DEFAULT localtimestamp(0),
 	pakk_hind numeric(7,2) NOT NULL,
 	CONSTRAINT pk_Kaup_kaup_kood PRIMARY KEY (kaup_kood),
-	CONSTRAINT chk_pakk_hind_ei_ole_vaiksem_nullist CHECK (pakk_hind>=0),
-	CONSTRAINT chk_maht_l_on_suurem_nullist CHECK (maht_l>0),
-	CONSTRAINT chk_Kaup_kood_on_suurem_nullist CHECK (kaup_kood>0),
-	CONSTRAINT chk_Kaup_kood_on_kuni_kaheksa_numbrit_pikk CHECK (kaup_kood<10000000),
+	CONSTRAINT chk_Kaup_pakk_hind_ei_ole_vaiksem_nullist CHECK (pakk_hind>=0),
+	CONSTRAINT chk_Kaup_maht_l_on_suurem_nullist CHECK (maht_l>0),
+	CONSTRAINT chk_Kaup_kaup_kood_on_suurem_nullist CHECK (kaup_kood>0),
+	CONSTRAINT chk_Kaup_kaup_kood_on_kuni_kaheksa_numbrit_pikk CHECK (kaup_kood<10000000),
 	CONSTRAINT fk_Kaup_kauba_seisundi_liik_kood FOREIGN KEY (kauba_seisundi_liik_kood) REFERENCES Kauba_seisundi_liik (kauba_seisundi_liik_kood) ON DELETE No Action ON UPDATE Cascade,
 	CONSTRAINT fk_Kaup_pakend_kood FOREIGN KEY (pakend_kood) REFERENCES Pakend (pakend_kood) ON DELETE No Action ON UPDATE Cascade,
 	CONSTRAINT fk_Kaup_puidutyyp_kood FOREIGN KEY (puidutyyp_kood) REFERENCES Puidutyyp (puidutyyp_kood) ON DELETE No Action ON UPDATE Cascade,
@@ -360,7 +364,7 @@ CREATE TABLE Kauba_kategooria_omamine
 
 CREATE INDEX idx_fk_Kauba_Kategooria_kauba_kategooria_tyyp_kood ON Kauba_Kategooria (kauba_kategooria_tyyp_kood ASC);
 CREATE INDEX idx_fk_Isik_isiku_seisundi_liik_kood ON Isik (isiku_seisundi_liik_kood ASC);
-CREATE INDEX idx_Isik_riik_kood ON Isik (riik_kood ASC);
+CREATE INDEX idx_fk_Isik_riik_kood ON Isik (riik_kood ASC);
 CREATE INDEX idx_Isik_perenimi_eesnimi ON Isik (perenimi ASC,eesnimi ASC);
 CREATE INDEX idx_fk_Tootaja_amet_kood ON Tootaja (amet_kood ASC);
 CREATE INDEX idx_fk_Tootaja_tootaja_seisundi_liik_kood ON Tootaja (tootaja_seisundi_liik_kood ASC);
@@ -619,7 +623,7 @@ SELECT kaup.kaup_kood AS Kaup_kood,
  */
 
 
- CREATE OR REPLACE VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu WITH (security_barrier) AS
+ CREATE OR REPLACE VIEW public.vaata_ootel_mitteaktiivsed_kaupu WITH (security_barrier) AS
 SELECT kaup.kaup_kood AS Kaup_kood,
    puidutyyp.nimetus AS Puidutyyp,
    tootja.nimetus AS Tootja,
@@ -636,7 +640,7 @@ SELECT kaup.kaup_kood AS Kaup_kood,
 ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
  WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 2]);
 
-COMMENT ON VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu
+COMMENT ON VIEW public.vaata_ootel_mitteaktiivsed_kaupu
     IS 'Vaade leiab andmed kaupade kohta, mille seisundi liik on "ootel" või “mitteaktiivne”. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna, registreerimise aja ja seisundiliigi kohta. Vaade on vajalik kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid';
 
 
@@ -704,18 +708,86 @@ COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
     IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse kaupade detailandmed, kus on nähaks tavaandmetele ka kauba registreerinud isiku eesnimi, perekonnanimi ja e-maili aadress. Vaade on mõeldud kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid.';
 
 
-    CREATE OR REPLACE VIEW public.vaata_koondaruannet WITH (security_barrier) AS
+    CREATE OR REPLACE VIEW public.vaata_kaupade_koondaruannet WITH (security_barrier) AS
        	SELECT Kauba_seisundi_liik.kauba_seisundi_liik_kood AS ID, upper(Kauba_seisundi_liik.nimetus) AS Nimetus, COUNT(Kaup.kaup_kood) AS Arv
     	FROM Kauba_seisundi_liik LEFT JOIN Kaup ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood
     	GROUP BY Kauba_seisundi_liik.kauba_seisundi_liik_kood, Kauba_seisundi_liik.nimetus
     	ORDER BY COUNT(Kaup.kaup_kood) DESC , Kauba_seisundi_liik.nimetus;
 
-        COMMENT ON VIEW public.vaata_koondaruannet
+        COMMENT ON VIEW public.vaata_kaupade_koondaruannet
             IS 'Vaade leiab andmed kõikide kaupade kohta ning kuvab iga kauba elutsükli seisundi kohta selle seisundi koodi, nimetuse suurtähtedega ja hetkel selles seisundis olevate kaupade arvu. Vaade on vajalik laojuhatajale, et ta saaks teha juhtimisotsuseid.';
 
 
 
 /* PUNK 8 FUNKTSIOONID  */
+
+
+CREATE OR REPLACE FUNCTION f_unusta_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+DELETE FROM Kaup
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=1
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+CREATE OR REPLACE FUNCTION f_aktiveeri_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=3
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood IN (1, 2)
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+
+CREATE OR REPLACE FUNCTION f_muuda_kaup_mitteaktiivseks
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=2
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=3
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+CREATE OR REPLACE FUNCTION f_lisa_kaup_kategooriasse
+(
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE
+)
+RETURNS BOOLEAN AS
+$BODY$
+BEGIN
+  SELECT kaup_kood FROM Kaup WHERE kaup_kood=p_kaup_kood AND kauba_seisundi_liik_kood IN (1, 2) FOR UPDATE;
+  IF FOUND THEN
+      INSERT INTO Kauba_kategooria_omamine(
+      kaup_kood,
+      kauba_kategooria_kood
+      )
+      VALUES
+      (
+      p_kaup_kood,
+      p_kauba_kategooria_kood
+      );
+      RETURN TRUE;
+  END IF;
+  RETURN FALSE;
+END;
+$BODY$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path=public, pg_temp;
 
 CREATE OR REPLACE FUNCTION f_registreeri_kaup (
 p_kaup_kood Kaup.kaup_kood%TYPE,
@@ -754,18 +826,6 @@ p_pakk_hind
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
 
-
-COMMENT ON FUNCTION f_registreeri_kaup (
-p_kaup_kood Kaup.kaup_kood%TYPE,
-p_pakend_kood Kaup.pakend_kood%TYPE,
-p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
-p_tootja_kood Kaup.tootja_kood%TYPE,
-p_reg_isik_id Kaup.reg_isik_id%TYPE,
-p_maht_l Kaup.maht_l%TYPE,
-p_pakk_hind Kaup.pakk_hind%TYPE
-) IS 'Selle funktsiooni abil saab lisada andmebaasi uue kauba.  Funktsioon realiseerib andmebaasioperatsiooni number 1. Parameetri p_kaup_kood oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_reg_isik_id oodatav väärtus on registreerinud isiku id identifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
-
-
 CREATE OR REPLACE FUNCTION f_muuda_kaup
 (
 p_kaup_kood_vana Kaup.kaup_kood%TYPE,
@@ -790,16 +850,6 @@ RETURNING kaup_kood;
 $$ LANGUAGE SQL CALLED ON NULL INPUT SECURITY DEFINER
 SET search_path=public, pg_temp;
 
-COMMENT ON FUNCTION f_muuda_kaup(
-p_kaup_kood_vana Kaup.kaup_kood%TYPE,
-p_kaup_kood_uus Kaup.kaup_kood%TYPE,
-p_pakend_kood_uus Kaup.pakend_kood%TYPE,
-p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
-p_tootja_kood_uus Kaup.tootja_kood%TYPE,
-p_maht_l_uus Kaup.maht_l%TYPE,
-p_pakk_hind_uus Kaup.pakk_hind%TYPE
-) IS 'Selle Funktsiooni abil saab muuta kauba andmeid. Funktsioon realiseerib andmebaasioperatsiooni number 6. Parameetri p_kaup_kood_vana oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_kaup_kood_uus oodatav väärtus on muudetava kauba koodi uus väärtus, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
-
 
 CREATE OR REPLACE FUNCTION f_lopeta_kaup
 (
@@ -814,9 +864,6 @@ AND kauba_seisundi_liik_kood IN (2, 3)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
-
-COMMENT ON FUNCTION f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab lõpetada kaupa. Funktsioon realiseerib andmebaasioperatsiooni number 5. Parameetri p_kaup_kood oodatav väärtus on kauba identifikaator.';
-
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 UPDATE Isik SET parool = public.crypt(parool,public.gen_salt('bf', 11));
@@ -837,13 +884,6 @@ RETURN coalesce(rslt, FALSE);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE
 SET search_path = public, pg_temp;
-COMMENT ON FUNCTION f_on_laojuhataja(p_e_mail text,
-p_parool text) IS 'Selle funktsiooni abil autenditakse
-laojuhatajat. Parameetri p_e_mail oodatav väärtus on
-tõstutundetu e_mail ja p_parool oodatav väärtus on
-tõstutundlik avatekstiline parool. Laojuhatajal on õigus
-süsteemi siseneda, vaid siis kui tema seisundiks on Töötab
-või Praktikal.';
 
 
 CREATE OR REPLACE FUNCTION kauba_seisundi_liik_kood_peab_olema_1()
@@ -853,7 +893,8 @@ BEGIN
     RAISE EXCEPTION 'Kaup luuakse ebakorrektses seisundis, uus kaup peab olema seisundis ootel!';
 END;
 $BODY$
-language plpgsql;
+language plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
 
 CREATE OR REPLACE FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1()
   RETURNS trigger AS
@@ -862,44 +903,80 @@ BEGIN
     RAISE EXCEPTION 'Ainult ootel kaupa tohib kustutada!';
 END;
 $BODY$
-language plpgsql;
+language plpgsql SECURITY DEFINER
+SET search_path=public, pg_temp;
 
 
-CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_lisada()
+CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada()
   RETURNS trigger AS
 $BODY$
 BEGIN
-    PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=NEW.reg_isik_id and tootaja_seisundi_liik_kood IN (1, 2);
+    SELECT isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=NEW.reg_isik_id and tootaja_seisundi_liik_kood IN (1, 2) FOR UPDATE;
     IF NOT FOUND THEN
-      RAISE EXCEPTION 'Isikul ei ole oigust kaupa lisada! Peab olema kaubahaldur';
+      RAISE EXCEPTION 'Isikul ei ole oigust kaupa lisada ega andmeid muuta! Peab olema kaubahaldur';
     END IF;
     RETURN NEW;
 END;
 $BODY$
-language plpgsql;
+language plpgsql SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+
+--funktsioonide lopp
+
+COMMENT ON FUNCTION f_muuda_kaup(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
+) IS 'Selle Funktsiooni abil saab muuta kauba andmeid. Funktsioon realiseerib andmebaasioperatsiooni number 6. Parameetri p_kaup_kood_vana oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_kaup_kood_uus oodatav väärtus on muudetava kauba koodi uus väärtus, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
+
+COMMENT ON FUNCTION f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab lõpetada kaupa. Funktsioon realiseerib andmebaasioperatsiooni number 5. Parameetri p_kaup_kood oodatav väärtus on kauba identifikaator.';
+
+COMMENT ON FUNCTION f_registreeri_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+) IS 'Selle funktsiooni abil saab lisada andmebaasi uue kauba.  Funktsioon realiseerib andmebaasioperatsiooni number 1. Parameetri p_kaup_kood oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_reg_isik_id oodatav väärtus on registreerinud isiku id identifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
+
+COMMENT ON FUNCTION f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab aktiveerida kaupa, mille seisundi liik kood on eelnevalt kas 1 või 2, ehk seisundis ootel või mitteaktiivne. Funktsioon realiseerib andmeoperatsiooni number 3.';
+
+COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 7.';
+
+COMMENT ON FUNCTION f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kaupa määrata mitteaktiivseks, mille seisundi liik kood on eelnevalt 3, ehk seisundis aktiivne. Funktsioon realiseerib andmeoperatsiooni number 4.';
+
+COMMENT ON FUNCTION f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kustudada kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 2.';
+
+COMMENT ON FUNCTION kauba_seisundi_liik_kood_peab_olema_1() IS 'Funktsioon kontrollib, et lisamisel peab kaup olema seisundis 1 ehk “ootel”.';
+
+COMMENT ON FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1() IS 'Funktsioon kontrollib, et kustutatava kauba seisundi liik peab olema 1 ehk “ootel".';
+
+COMMENT ON FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada() IS 'Funktsioon kontrollib, et isikul, kelle ametikood ei ole 4321, siis tal ei ole oigust kaupa muuta ega lisada. Samuti kontrollib, et tootaja_seisundi_liik oleks 1 "tootab" voi 2 "praktikal"';
+
+COMMENT ON FUNCTION f_on_laojuhataja(p_e_mail text,
+p_parool text) IS 'Selle funktsiooni abil autenditakse
+laojuhatajat. Parameetri p_e_mail oodatav väärtus on
+tõstutundetu e_mail ja p_parool oodatav väärtus on
+tõstutundlik avatekstiline parool. Laojuhatajal on õigus
+süsteemi siseneda, vaid siis kui tema seisundiks on Töötab
+või Praktikal.';
 
 
 CREATE TRIGGER kaup_insert_trigger_kontrolli_isik BEFORE INSERT ON Kaup
 FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_lisada();
-
-CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kauba_andmeid_muuta()
-  RETURNS trigger AS
-$BODY$
-BEGIN
-   PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=coalesce(NEW.reg_isik_id, OLD.reg_isik_id) and tootaja_seisundi_liik_kood IN (1, 2);
-   IF NOT FOUND THEN
-     RAISE EXCEPTION 'Isikul ei ole oigust kauba andmeid muuta! Peab olema kaubahaldur';
-   END IF;
-   RETURN NEW;
-END;
-$BODY$
-language plpgsql;
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
 
 
 CREATE TRIGGER kaup_update_trigger_kontrolli_isik BEFORE UPDATE ON Kaup
 FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kauba_andmeid_muuta();
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
 
 CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
 FOR EACH ROW
@@ -910,7 +987,7 @@ EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
 
 CREATE TRIGGER kaup_delete_trigger BEFORE DELETE ON Kaup
 FOR EACH ROW
-WHEN (OLD.kauba_seisundi_liik_kood=1)
+WHEN (NOT(OLD.kauba_seisundi_liik_kood=1))
 EXECUTE PROCEDURE kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1();
 
 COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas kaup luuakse korrektses seisundis. Kauba algne seisund peab olema ootel';
@@ -928,7 +1005,7 @@ COMMENT ON TABLE Isik IS 'Kuna isikutega seotud anmeid võidakse muuta, siis mä
 --VACUUM ANALYZE;
 
 ANALYZE;
-EXPLAIN SELECT * FROM vaata_ootel_ja_mitteaktiivsed_kaupu;
+EXPLAIN SELECT * FROM vaata_ootel_mitteaktiivsed_kaupu;
 
 REASSIGN OWNED BY laojuhataja TO postgres;
 
@@ -958,104 +1035,79 @@ p_pakk_hind Kaup.pakk_hind%TYPE
 f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
 FROM PUBLIC;
 
-REVOKE CONNECT ON DATABASE "t154829_SAEPURU_PROJEKT" FROM laojuhataja;
+REVOKE CONNECT, TEMP ON DATABASE "t154829_SAEPURU_PROJEKT" FROM PUBLIC;
+
+REVOKE USAGE ON LANGUAGE plpgsql FROM PUBLIC;
+
+REVOKE CREATE, USAGE ON SCHEMA public FROM PUBLIC;
+
+REVOKE EXECUTE ON FUNCTION
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_on_laojuhataja(p_e_mail text, p_parool text),
+f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE),
+f_muuda_kaup(
+p_kaup_kood_vana Kaup.kaup_kood%TYPE,
+p_kaup_kood_uus Kaup.kaup_kood%TYPE,
+p_pakend_kood_uus Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood_uus Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood_uus Kaup.tootja_kood%TYPE,
+p_maht_l_uus Kaup.maht_l%TYPE,
+p_pakk_hind_uus Kaup.pakk_hind%TYPE
+),
+f_registreeri_kaup (
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_pakend_kood Kaup.pakend_kood%TYPE,
+p_puidutyyp_kood Kaup.puidutyyp_kood%TYPE,
+p_tootja_kood Kaup.tootja_kood%TYPE,
+p_reg_isik_id Kaup.reg_isik_id%TYPE,
+p_maht_l Kaup.maht_l%TYPE,
+p_pakk_hind Kaup.pakk_hind%TYPE
+)
+FROM PUBLIC;
+
+REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
 
 REVOKE USAGE ON SCHEMA public FROM laojuhataja;
 
+REVOKE CONNECT ON DATABASE "t154829_SAEPURU_PROJEKT" FROM laojuhataja;
+
 REVOKE SELECT ON
-vaata_koiki_kaupu,
-vaata_ootel_ja_mitteaktiivsed_kaupu,
-vaata_kaupade_pohiandmeid
+public.vaata_aktiivsed_mitteaktiivsed_kaupu,
+public.vaata_ootel_mitteaktiivsed_kaupu,
+public.vaata_kaupade_pohiandmeid,
+public.vaata_koiki_kaupu,
+public.vaata_kaupade_koondaruannet
 FROM laojuhataja;
+
+REVOKE EXECUTE ON FUNCTION
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+FROM laojuhataja;
+
 
 DROP USER IF EXISTS laojuhataja;
 
 CREATE USER laojuhataja WITH PASSWORD '1337';
-
 
 GRANT CONNECT ON DATABASE "t154829_SAEPURU_PROJEKT" TO laojuhataja;
 
 GRANT USAGE ON SCHEMA public TO laojuhataja;
 
 GRANT SELECT ON
-vaata_koiki_kaupu,
-vaata_ootel_ja_mitteaktiivsed_kaupu,
-vaata_kaupade_pohiandmeid
+public.vaata_aktiivsed_mitteaktiivsed_kaupu,
+public.vaata_ootel_mitteaktiivsed_kaupu,
+public.vaata_kaupade_pohiandmeid,
+public.vaata_koiki_kaupu,
+public.vaata_kaupade_koondaruannet
 TO laojuhataja;
 
+GRANT EXECUTE ON FUNCTION
+f_on_laojuhataja(p_e_mail text, p_parool text),
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+TO laojuhataja;
+
+ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
+
 --tuleb kirjutada seletavad laused ühe nii-öelda analyzei kohta
-
-
-CREATE OR REPLACE FUNCTION f_unusta_kaup
-(
-p_kaup_kood Kaup.kaup_kood%TYPE
-)
-RETURNS Kaup.kaup_kood%TYPE AS $$
-DELETE FROM Kaup
-WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood=1
-RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-
-COMMENT ON FUNCTION f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kustudada kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
-
-CREATE OR REPLACE FUNCTION f_aktiveeri_kaup
-(
-p_kaup_kood Kaup.kaup_kood%TYPE
-)
-RETURNS Kaup.kaup_kood%TYPE AS $$
-UPDATE Kaup SET
-kaup_kood=p_kaup_kood,
-kauba_seisundi_liik_kood=3
-WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood IN (1, 2)
-RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-
-COMMENT ON FUNCTION f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab aktiveerida kaupa, mille seisundi liik kood on eelnevalt kas 1 või 2, ehk seisundis ootel või mitteaktiivne.';
-
-CREATE OR REPLACE FUNCTION f_muuda_kaup_mitteaktiivseks
-(
-p_kaup_kood Kaup.kaup_kood%TYPE
-)
-RETURNS Kaup.kaup_kood%TYPE AS $$
-UPDATE Kaup SET
-kaup_kood=p_kaup_kood,
-kauba_seisundi_liik_kood=2
-WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood=3
-RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
-SET search_path=public, pg_temp;
-
-COMMENT ON FUNCTION f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kaupa määrata mitteaktiivseks, mille seisundi liik kood on eelnevalt 3, ehk seisundis aktiivne.';
-
-CREATE OR REPLACE FUNCTION f_lisa_kaup_kategooriasse
-(
-p_kaup_kood Kaup.kaup_kood%TYPE,
-p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE
-)
-RETURNS BOOLEAN AS
-$BODY$
-BEGIN
-  PERFORM kaup_kood FROM Kaup WHERE kaup_kood=p_kaup_kood AND kauba_seisundi_liik_kood IN (1, 2);
-  IF FOUND THEN
-      INSERT INTO Kauba_kategooria_omamine(
-      kaup_kood,
-      kauba_kategooria_kood
-      )
-      VALUES
-      (
-      p_kaup_kood,
-      p_kauba_kategooria_kood
-      );
-      RETURN TRUE;
-  END IF;
-  RETURN FALSE;
-END;
-$BODY$ LANGUAGE plpgsql
-SET search_path=public, pg_temp;
-
-COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
