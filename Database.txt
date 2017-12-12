@@ -682,7 +682,7 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
 SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja,
-COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Tyyp,
+COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Kategooria_tyyp,
 COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
@@ -709,7 +709,7 @@ COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
 
 
     CREATE OR REPLACE VIEW public.vaata_kaupade_koondaruannet WITH (security_barrier) AS
-       	SELECT Kauba_seisundi_liik.kauba_seisundi_liik_kood AS ID, upper(Kauba_seisundi_liik.nimetus) AS Nimetus, COUNT(Kaup.kaup_kood) AS Arv
+       	SELECT Kauba_seisundi_liik.kauba_seisundi_liik_kood AS Seisundi_liik_id, upper(Kauba_seisundi_liik.nimetus) AS Seisundi_liik_nimetus, COUNT(Kaup.kaup_kood) AS Arv
     	FROM Kauba_seisundi_liik LEFT JOIN Kaup ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood
     	GROUP BY Kauba_seisundi_liik.kauba_seisundi_liik_kood, Kauba_seisundi_liik.nimetus
     	ORDER BY COUNT(Kaup.kaup_kood) DESC , Kauba_seisundi_liik.nimetus;
