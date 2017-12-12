@@ -115,7 +115,6 @@ DROP SERVER IF EXISTS minu_testandmete_server_apex CASCADE;
 
 DROP USER MAPPING IF EXISTS FOR t154829 SERVER minu_testandmete_server_apex;
 
-
 DROP VIEW IF EXISTS  CASCADE;
 
 DROP VIEW IF EXISTS public.vaata_koiki_kaupu CASCADE;
@@ -123,6 +122,10 @@ DROP VIEW IF EXISTS public.vaata_koiki_kaupu CASCADE;
 DROP VIEW IF EXISTS public.vaata_ootel_ja_mitteaktiivsed_kaupu CASCADE;
 
 DROP VIEW IF EXISTS public.vaata_kaupade_pohiandmeid CASCADE;
+
+DROP VIEW IF EXISTS public.vaata_aktiivsed_mitteaktiivsed_kaupu CASCADE;
+
+DROP VIEW IF EXISTS public.vaata_koondaruannet CASCADE;
 
 DROP INDEX IF EXISTS idx_Tootaja_amet_R_id;
 
@@ -424,7 +427,7 @@ INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (4, '
 
 /*  MINU TESTANDMETE SERVER */
 
-CREATE EXTENSION IF NOT EXISTS postgres_fdw;
+CREATE EXTENSION IF NOT EXISTS postgres_fdw WITH SCHEMA public;
 /*Lisan andmebaasi väliste andmete pakendamise laienduse, mis
 võimaldab PostgreSQL andmebaasis lugeda andmeid teisest
 PostgreSQL andmebaasist ja neid seal ka muuta (seda viimast pole
@@ -591,9 +594,7 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
         ON tootja.tootja_kood = kaup.tootja_kood)
 		ON isik.isik_id = kaup.reg_isik_id
         ORDER BY kaup.kaup_kood;
-v
-    ALTER TABLE public.vaata_koiki_kaupu
-        OWNER TO t154829;
+
     COMMENT ON VIEW public.vaata_koiki_kaupu
         IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna ja seisundiliigi kohta. Vaade on vajalik laojuhtajale, et näha terviklikku pilti andmebaasi registreeritud kaupadest.';
 
@@ -635,10 +636,19 @@ SELECT kaup.kaup_kood AS Kaup_kood,
 ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
  WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 2]);
 
-ALTER TABLE public.vaata_ootel_ja_mitteaktiivsed_kaupu
-    OWNER TO t154829;
 COMMENT ON VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu
     IS 'Vaade leiab andmed kaupade kohta, mille seisundi liik on "ootel" või “mitteaktiivne”. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna, registreerimise aja ja seisundiliigi kohta. Vaade on vajalik kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid';
+
+
+CREATE OR REPLACE VIEW public.vaata_aktiivsed_mitteaktiivsed_kaupu WITH (security_barrier) AS
+   	 SELECT kaup.kaup_kood, puidutyyp.nimetus AS puidutyyp_nimetus, tootja.nimetus AS tootja_nimetus, kaup.maht_l, pakend.nimetus AS pakend_nimetus, kaup.pakk_hind, kaup.reg_aeg, isik.e_mail, kauba_seisundi_liik.nimetus
+	 FROM ((((kaup INNER JOIN kauba_seisundi_liik ON kaup.kauba_seisundi_liik_kood = kauba_seisundi_liik.kauba_seisundi_liik_kood) INNER JOIN pakend ON kaup.pakend_kood = pakend.pakend_kood) INNER JOIN puidutyyp ON kaup.puidutyyp_kood = puidutyyp.puidutyyp_kood) INNER JOIN tootja ON kaup.tootja_kood = tootja.tootja_kood) INNER JOIN isik ON kaup.reg_isik_id = isik.isik_id
+	 WHERE kaup.kauba_seisundi_liik_kood IN (2,3);
+
+
+     COMMENT ON VIEW public.vaata_aktiivsed_mitteaktiivsed_kaupu
+         IS 'Vaade leiab andmed kõikide kaupade kohta, mille seisundi liik on “aktiivne" või “mitteaktiivne". Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna, registreerimise aja ja seisundiliigi kohta. Vaade on vajalik laojuhatajale, et nad ta saaks teha juhtimisotsuseid ja lopetada kaupu.';
+
 
  /* VIRTUAALVAADE #3 koondaruanne */
 
@@ -667,8 +677,8 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja, 
-COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Tyyp, 
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja,
+COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Tyyp,
 COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
@@ -687,13 +697,23 @@ ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
 ON Pakend.pakend_kood = Kaup.pakend_kood)
 ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
 ON Tootja.tootja_kood = Kaup.tootja_kood
-GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus, 
+GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus,
 Kaup.pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail;
 
-ALTER TABLE public.vaata_kaupade_pohiandmeid
-    OWNER TO t154829;
 COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
     IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse kaupade detailandmed, kus on nähaks tavaandmetele ka kauba registreerinud isiku eesnimi, perekonnanimi ja e-maili aadress. Vaade on mõeldud kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid.';
+
+
+    CREATE OR REPLACE VIEW public.vaata_koondaruannet WITH (security_barrier) AS
+       	SELECT Kauba_seisundi_liik.kauba_seisundi_liik_kood AS ID, upper(Kauba_seisundi_liik.nimetus) AS Nimetus, COUNT(Kaup.kaup_kood) AS Arv
+    	FROM Kauba_seisundi_liik LEFT JOIN Kaup ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood
+    	GROUP BY Kauba_seisundi_liik.kauba_seisundi_liik_kood, Kauba_seisundi_liik.nimetus
+    	ORDER BY COUNT(Kaup.kaup_kood) DESC , Kauba_seisundi_liik.nimetus;
+
+        COMMENT ON VIEW public.vaata_koondaruannet
+            IS 'Vaade leiab andmed kõikide kaupade kohta ning kuvab iga kauba elutsükli seisundi kohta selle seisundi koodi, nimetuse suurtähtedega ja hetkel selles seisundis olevate kaupade arvu. Vaade on vajalik laojuhatajale, et ta saaks teha juhtimisotsuseid.';
+
+
 
 /* PUNK 8 FUNKTSIOONID  */
 
@@ -758,16 +778,16 @@ p_pakk_hind_uus Kaup.pakk_hind%TYPE
 )
 RETURNS Kaup.kaup_kood%TYPE AS $$
 UPDATE Kaup SET
-kaup_kood=p_kaup_kood_uus,
-pakend_kood=p_pakend_kood_uus,
-puidutyyp_kood=p_puidutyyp_kood_uus,
-tootja_kood=p_tootja_kood_uus,
-maht_l=p_maht_l_uus,
-pakk_hind=p_pakk_hind_uus
+kaup_kood=coalesce(p_kaup_kood_uus, kaup_kood),
+pakend_kood=coalesce(p_pakend_kood_uus, pakend_kood),
+puidutyyp_kood=coalesce(p_puidutyyp_kood_uus, puidutyyp_kood),
+tootja_kood=coalesce(p_tootja_kood_uus, tootja_kood),
+maht_l=coalesce(p_maht_l_uus, maht_l),
+pakk_hind=coalesce(p_pakk_hind_uus, pakk_hind)
 WHERE kaup_kood=p_kaup_kood_vana
 AND kauba_seisundi_liik_kood IN (1, 2)
 RETURNING kaup_kood;
-$$ LANGUAGE SQL SECURITY DEFINER
+$$ LANGUAGE SQL CALLED ON NULL INPUT SECURITY DEFINER
 SET search_path=public, pg_temp;
 
 COMMENT ON FUNCTION f_muuda_kaup(
@@ -891,7 +911,7 @@ EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
 CREATE TRIGGER kaup_delete_trigger BEFORE DELETE ON Kaup
 FOR EACH ROW
 WHEN (OLD.kauba_seisundi_liik_kood=1)
-EXECUTE PROCEDURE kustutada_ei_voi_kaupa_kauba_seisundi_liik_koodiga_1();
+EXECUTE PROCEDURE kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1();
 
 COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas kaup luuakse korrektses seisundis. Kauba algne seisund peab olema ootel';
 
@@ -1038,4 +1058,4 @@ END;
 $BODY$ LANGUAGE plpgsql
 SET search_path=public, pg_temp;
 
-COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
+COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel.';
