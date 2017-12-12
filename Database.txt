@@ -576,8 +576,11 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
        kaup.maht_l AS Maht_l,
        pakend.nimetus AS Pakend,
        kaup.pakk_hind AS Paki_hind,
-       kauba_seisundi_liik.nimetus AS Seisundi_liik
-      FROM tootja
+       kauba_seisundi_liik.nimetus AS Seisundi_liik,
+	   isik.e_mail AS Registreerija,
+	   kaup.reg_aeg AS Registreerimise_aeg
+	  FROM Isik
+		JOIN (tootja
         JOIN (puidutyyp
         JOIN (pakend
         JOIN (kauba_seisundi_liik
@@ -585,9 +588,10 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
         ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
         ON pakend.pakend_kood = kaup.pakend_kood)
         ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood)
-        ON tootja.tootja_kood = kaup.tootja_kood
+        ON tootja.tootja_kood = kaup.tootja_kood)
+		ON isik.isik_id = kaup.reg_isik_id
         ORDER BY kaup.kaup_kood;
-
+v
     ALTER TABLE public.vaata_koiki_kaupu
         OWNER TO t154829;
     COMMENT ON VIEW public.vaata_koiki_kaupu
@@ -663,7 +667,9 @@ ON Tootja.tootja_kood = Kaup.tootja_kood;
 */
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
-SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), '') AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
+SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, round(kaup.pakk_hind/kaup.maht_l,2) AS l_hind, Tootja.nimetus AS Tootja, 
+COALESCE(Kauba_kategooria_tyyp.nimetus, CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Tyyp, 
+COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), CAST ('Puudub' AS ei_koosne_tyhikutest)) AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
 FROM Tootja
 INNER JOIN (Puidutyyp
 INNER JOIN (Pakend
@@ -672,16 +678,17 @@ INNER JOIN (Kaup
 INNER JOIN Isik
 ON Kaup.reg_isik_id = Isik.isik_id)
 ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
-INNER JOIN ((Kauba_kategooria_tyyp
-INNER JOIN Kauba_kategooria
+LEFT JOIN ((Kauba_kategooria_tyyp
+LEFT JOIN Kauba_kategooria
 ON Kauba_kategooria_tyyp.kauba_kategooria_tyyp_kood = Kauba_kategooria.kauba_kategooria_tyyp_kood)
-INNER JOIN Kauba_kategooria_omamine
+LEFT JOIN Kauba_kategooria_omamine
 ON Kauba_kategooria.kauba_kategooria_kood = Kauba_kategooria_omamine.kauba_kategooria_kood)
 ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
 ON Pakend.pakend_kood = Kaup.pakend_kood)
 ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
 ON Tootja.tootja_kood = Kaup.tootja_kood
-GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus, Kaup.pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail;
+GROUP BY Kaup.kaup_kood, Puidutyyp.nimetus, Tootja.nimetus, Kauba_kategooria_tyyp.nimetus, Kaup.maht_l, Pakend.nimetus, 
+Kaup.pakk_hind, Kauba_seisundi_liik.nimetus, Kaup.reg_aeg, Isik.eesnimi, Isik.perenimi, Isik.e_mail;
 
 ALTER TABLE public.vaata_kaupade_pohiandmeid
     OWNER TO t154829;
@@ -828,11 +835,11 @@ END;
 $BODY$
 language plpgsql;
 
-CREATE OR REPLACE FUNCTION kustutada_ei_voi_kaupa_kauba_seisundi_liik_koodiga_1()
+CREATE OR REPLACE FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1()
   RETURNS trigger AS
 $BODY$
 BEGIN
-    RAISE EXCEPTION 'Ootel kaupa ei tohi kustutada!';
+    RAISE EXCEPTION 'Ainult ootel kaupa tohib kustutada!';
 END;
 $BODY$
 language plpgsql;
@@ -856,13 +863,13 @@ CREATE TRIGGER kaup_insert_trigger_kontrolli_isik BEFORE INSERT ON Kaup
 FOR EACH ROW
 EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_lisada();
 
-CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_uuendada()
+CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kauba_andmeid_muuta()
   RETURNS trigger AS
 $BODY$
 BEGIN
    PERFORM isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=coalesce(NEW.reg_isik_id, OLD.reg_isik_id) and tootaja_seisundi_liik_kood IN (1, 2);
    IF NOT FOUND THEN
-     RAISE EXCEPTION 'Isikul ei ole oigust kaupa uuendada! Peab olema kaubahaldur';
+     RAISE EXCEPTION 'Isikul ei ole oigust kauba andmeid muuta! Peab olema kaubahaldur';
    END IF;
    RETURN NEW;
 END;
@@ -872,14 +879,14 @@ language plpgsql;
 
 CREATE TRIGGER kaup_update_trigger_kontrolli_isik BEFORE UPDATE ON Kaup
 FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_uuendada();
+EXECUTE PROCEDURE isikul_ei_ole_oigust_kauba_andmeid_muuta();
 
 CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
 FOR EACH ROW
 WHEN (NOT (NEW.kauba_seisundi_liik_kood=1))
 EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
 
-/* kui üritan kustutada kaupa, mis on seisundil ootel... siis see ei ole võimalik */
+/* kui üritan kustutada kaupa, mis on seisundil ootel, siis see on võimalik */
 
 CREATE TRIGGER kaup_delete_trigger BEFORE DELETE ON Kaup
 FOR EACH ROW
@@ -890,7 +897,7 @@ COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas k
 
 COMMENT ON TRIGGER kaup_delete_trigger ON Kaup IS 'See trigger kontrollib, kas ei ole kauba kustutamisel kauba seisundi liik kood 1, ehk ootel';
 
-COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa uuendab õigel ametikohal olev isik';
+COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kauba andmeid muudab õigel ametikohal olev isik';
 
 COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa lisab õigel ametikohal olev isik';
 
@@ -966,7 +973,7 @@ p_kaup_kood Kaup.kaup_kood%TYPE
 RETURNS Kaup.kaup_kood%TYPE AS $$
 DELETE FROM Kaup
 WHERE kaup_kood=p_kaup_kood
-AND kauba_seisundi_liik_kood=2
+AND kauba_seisundi_liik_kood=1
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
