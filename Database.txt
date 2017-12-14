@@ -946,19 +946,19 @@ p_maht_l Kaup.maht_l%TYPE,
 p_pakk_hind Kaup.pakk_hind%TYPE
 ) IS 'Selle funktsiooni abil saab lisada andmebaasi uue kauba.  Funktsioon realiseerib andmebaasioperatsiooni number 1. Parameetri p_kaup_kood oodatav väärtus on muudetava kauba koodi indentifikaator, parameetri p_pakend_kood oodatav väärtus on kauba pakendi koodi indentifikaator, parameetri p_puidutyyp_kood oodatav väärtus on puidutüübi koodi indentifikaator, parameetri p_tootja_kood oodatav väärtus on kauba tootja koodi indentifikaator, parameetri p_reg_isik_id oodatav väärtus on registreerinud isiku id identifikaator, parameetri p_maht_l oodatav väärtus on kauba mahu indentifikaator, parameetri p_pakk_hind oodatav väärtus on kauba paki hinna indentifikaator.';
 
-COMMENT ON FUNCTION f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab aktiveerida kaupa, mille seisundi liik kood on eelnevalt kas 1 või 2, ehk seisundis ootel või mitteaktiivne. Funktsioon realiseerib andmeoperatsiooni number 3.';
+COMMENT ON FUNCTION f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab aktiveerida kaupa, mille seisundi liik kood on eelnevalt kas 1 või 2, ehk seisundis ootel või mitteaktiivne. Funktsioon realiseerib andmeoperatsiooni number 3. Parameetri p_kaup_kood oodatav väärtus on aktiveeritava kauba identifikaator.';
 
-COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 7.';
+COMMENT ON FUNCTION f_lisa_kaup_kategooriasse(p_kaup_kood Kaup.kaup_kood%TYPE, p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab  kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 7. Parameetri p_kaup_kood oodatav väärtus on kategooriasse lisatava kauba identifikaator.';
 
-COMMENT ON FUNCTION f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kaupa määrata mitteaktiivseks, mille seisundi liik kood on eelnevalt 3, ehk seisundis aktiivne. Funktsioon realiseerib andmeoperatsiooni number 4.';
+COMMENT ON FUNCTION f_muuda_kaup_mitteaktiivseks(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kaupa määrata mitteaktiivseks, mille seisundi liik kood on eelnevalt 3, ehk seisundis aktiivne. Funktsioon realiseerib andmeoperatsiooni number 4. Parameetri p_kaup_kood oodatav väärtus on mitteaktiivseks muudetava kauba identifikaator.';
 
-COMMENT ON FUNCTION f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kustudada kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 2.';
+COMMENT ON FUNCTION f_unusta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE) IS 'Selle funktsiooni abil saab kustudada kauba, mille seisundi liik kood on 1, ehk seisundis ootel. Funktsioon realiseerib andmeoperatsiooni number 2. Parameetri p_kaup_kood oodatav väärtus on unustatava kauba identifikaator.';
 
-COMMENT ON FUNCTION kauba_seisundi_liik_kood_peab_olema_1() IS 'Funktsioon kontrollib, et lisamisel peab kaup olema seisundis 1 ehk “ootel”.';
+COMMENT ON FUNCTION kauba_seisundi_liik_kood_peab_olema_1() IS 'Funktsioon kontrollib, et lisamisel oleks kaup seisundis 1 ehk “ootel”. Muudel juhtudel kuvatakse veateade, et kauba seisundi liik ei vastsa tingimustele.';
 
-COMMENT ON FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1() IS 'Funktsioon kontrollib, et kustutatava kauba seisundi liik peab olema 1 ehk “ootel".';
+COMMENT ON FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1() IS 'Funktsioon kontrollib, et kustutatava kauba seisundi liik peab olema 1 ehk “ootel". Muudel juhtudel kuvatakse veateade, et kauba seisundi liik ei vastsa tingimustele.';
 
-COMMENT ON FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada() IS 'Funktsioon kontrollib, et isikul, kelle ametikood ei ole 4321, siis tal ei ole oigust kaupa muuta ega lisada. Samuti kontrollib, et tootaja_seisundi_liik oleks 1 "tootab" voi 2 "praktikal"';
+COMMENT ON FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada() IS 'Funktsioon kontrollib, et isikul, kelle ametikood ei ole 4321, siis tal ei ole oigust kaupa muuta ega lisada. Samuti kontrollib, et tootaja_seisundi_liik oleks 1 "tootab" voi 2 "praktikal". Muudel juhtudel kuvatakse veateade, et isikul ei ole oigust kaupa lisada ega muuta. ';
 
 COMMENT ON FUNCTION f_on_laojuhataja(p_e_mail text,
 p_parool text) IS 'Selle funktsiooni abil autenditakse
