@@ -103,15 +103,10 @@ DROP FUNCTION IF EXISTS kauba_seisundi_liik_kood_peab_olema_1();
 
 DROP FUNCTION IF EXISTS kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1();
 
-DROP FUNCTION IF EXISTS isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
-
 DROP TRIGGER IF EXISTS kaup_insert_trigger ON Kaup;
 
 DROP TRIGGER IF EXISTS kaup_delete_trigger ON Kaup;
 
-DROP TRIGGER IF EXISTS kaup_insert_trigger_kontrolli_isik ON Kaup;
-
-DROP TRIGGER IF EXISTS kaup_delete_trigger_kontrolli_isik ON Kaup;
 
 DROP FOREIGN TABLE IF EXISTS Isik_jsonb CASCADE;
 
@@ -768,25 +763,20 @@ CREATE OR REPLACE FUNCTION f_lisa_kaup_kategooriasse
 p_kaup_kood Kaup.kaup_kood%TYPE,
 p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE
 )
-RETURNS BOOLEAN AS
+RETURNS VOID AS
 $BODY$
-BEGIN
-  SELECT kaup_kood FROM Kaup WHERE kaup_kood=p_kaup_kood AND kauba_seisundi_liik_kood IN (1, 2) FOR UPDATE;
-  IF FOUND THEN
       INSERT INTO Kauba_kategooria_omamine(
       kaup_kood,
       kauba_kategooria_kood
       )
       VALUES
       (
-      p_kaup_kood,
+        (SELECT kaup_kood FROM Kaup
+      WHERE kauba_seisundi_liik_kood IN (1, 2)
+      AND kaup_kood=p_kaup_kood),
       p_kauba_kategooria_kood
       );
-      RETURN TRUE;
-  END IF;
-  RETURN FALSE;
-END;
-$BODY$ LANGUAGE plpgsql SECURITY DEFINER
+$BODY$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
 
 CREATE OR REPLACE FUNCTION f_registreeri_kaup (
@@ -907,20 +897,6 @@ language plpgsql SECURITY DEFINER
 SET search_path=public, pg_temp;
 
 
-CREATE OR REPLACE FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada()
-  RETURNS trigger AS
-$BODY$
-BEGIN
-    SELECT isik_id FROM Tootaja WHERE amet_kood=4321 and isik_id=NEW.reg_isik_id and tootaja_seisundi_liik_kood IN (1, 2) FOR UPDATE;
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Isikul ei ole oigust kaupa lisada ega andmeid muuta! Peab olema kaubahaldur';
-    END IF;
-    RETURN NEW;
-END;
-$BODY$
-language plpgsql SECURITY DEFINER
-SET search_path=public, pg_temp;
-
 
 --funktsioonide lopp
 
@@ -958,7 +934,6 @@ COMMENT ON FUNCTION kauba_seisundi_liik_kood_peab_olema_1() IS 'Funktsioon kontr
 
 COMMENT ON FUNCTION kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1() IS 'Funktsioon kontrollib, et kustutatava kauba seisundi liik peab olema 1 ehk “ootel". Muudel juhtudel kuvatakse veateade, et kauba seisundi liik ei vastsa tingimustele.';
 
-COMMENT ON FUNCTION isikul_ei_ole_oigust_kaupa_muuta_ega_lisada() IS 'Funktsioon kontrollib, et isikul, kelle ametikood ei ole 4321, siis tal ei ole oigust kaupa muuta ega lisada. Samuti kontrollib, et tootaja_seisundi_liik oleks 1 "tootab" voi 2 "praktikal". Muudel juhtudel kuvatakse veateade, et isikul ei ole oigust kaupa lisada ega muuta. ';
 
 COMMENT ON FUNCTION f_on_laojuhataja(p_e_mail text,
 p_parool text) IS 'Selle funktsiooni abil autenditakse
@@ -968,15 +943,6 @@ tõstutundlik avatekstiline parool. Laojuhatajal on õigus
 süsteemi siseneda, vaid siis kui tema seisundiks on Töötab
 või Praktikal.';
 
-
-CREATE TRIGGER kaup_insert_trigger_kontrolli_isik BEFORE INSERT ON Kaup
-FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
-
-
-CREATE TRIGGER kaup_update_trigger_kontrolli_isik BEFORE UPDATE ON Kaup
-FOR EACH ROW
-EXECUTE PROCEDURE isikul_ei_ole_oigust_kaupa_muuta_ega_lisada();
 
 CREATE TRIGGER kaup_insert_trigger BEFORE INSERT ON Kaup
 FOR EACH ROW
@@ -993,10 +959,6 @@ EXECUTE PROCEDURE kustutada_voib_kaupa_kauba_seisundi_liik_koodiga_1();
 COMMENT ON TRIGGER kaup_insert_trigger ON Kaup IS 'See trigger kontrollib, kas kaup luuakse korrektses seisundis. Kauba algne seisund peab olema ootel';
 
 COMMENT ON TRIGGER kaup_delete_trigger ON Kaup IS 'See trigger kontrollib, kas ei ole kauba kustutamisel kauba seisundi liik kood 1, ehk ootel';
-
-COMMENT ON TRIGGER kaup_update_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kauba andmeid muudab õigel ametikohal olev isik';
-
-COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger kontrollib, kas kaupa lisab õigel ametikohal olev isik';
 
 COMMENT ON TABLE Amet IS 'Kuna ametite kirjeldust võidakse hiljem muuta, siis määrame tabeli plokkidesse vaba ruumi 10% ulatuses (fillfactor=90)';
 
