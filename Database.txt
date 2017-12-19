@@ -994,7 +994,8 @@ p_reg_isik_id Kaup.reg_isik_id%TYPE,
 p_maht_l Kaup.maht_l%TYPE,
 p_pakk_hind Kaup.pakk_hind%TYPE
 ),
-f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
 FROM PUBLIC;
 
 REVOKE CONNECT, TEMP ON DATABASE "t154829_SAEPURU_PROJEKT" FROM PUBLIC;
@@ -1045,7 +1046,8 @@ public.vaata_kaupade_koondaruannet
 FROM laojuhataja;
 
 REVOKE EXECUTE ON FUNCTION
-f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_on_laojuhataja(text,text)
 FROM laojuhataja;
 
 
@@ -1067,7 +1069,8 @@ TO laojuhataja;
 
 GRANT EXECUTE ON FUNCTION
 f_on_laojuhataja(p_e_mail text, p_parool text),
-f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
+f_lopeta_kaup(p_kaup_kood Kaup.kaup_kood%TYPE),
+f_aktiveeri_kaup(p_kaup_kood Kaup.kaup_kood%TYPE)
 TO laojuhataja;
 
 ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
