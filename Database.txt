@@ -418,8 +418,8 @@ INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (
 INSERT INTO Tootaja_seisundi_liik (tootaja_seisundi_liik_kood, nimetus) VALUES (4, 'Puhkusel');
 
 INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (1, 'Ootel');
-INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (2, 'Mitteaktiivne');
-INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (3, 'Aktiivne');
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (2, 'Aktiivne');
+INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (3, 'Mitteaktiivne');
 INSERT INTO Kauba_seisundi_liik (kauba_seisundi_liik_kood, nimetus) VALUES (4, 'Lopetatud');
 
 /*  MINU TESTANDMETE SERVER */
@@ -548,26 +548,6 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 31);
 INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (4444444, 41);
 
-/* VIRTUAALVAADE #1 VAATA KÕIKI KAUPE LÄBI PGADMINI CREATE VIEW */
-
-
-/* SELECT kaup.kaup_kood AS Kaup_kood,
-   puidutyyp.nimetus AS Puidutyyp,
-   tootja.nimetus AS Tootja,
-   kaup.maht_l AS Maht_l,
-   pakend.nimetus AS Pakend,
-   kaup.pakk_hind AS Paki_hind,
-   kauba_seisundi_liik.nimetus AS Seisundi_liik
-  FROM tootja
-    JOIN (puidutyyp
-    JOIN (pakend
-    JOIN (kauba_seisundi_liik
-    JOIN kaup
-    ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
-    ON pakend.pakend_kood = kaup.pakend_kood)
-    ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood)
-    ON tootja.tootja_kood = kaup.tootja_kood;
-*/
 
     CREATE OR REPLACE VIEW public.vaata_koiki_kaupu WITH (security_barrier) AS
     SELECT kaup.kaup_kood AS Kaup_kood,
@@ -593,26 +573,6 @@ INSERT INTO Kauba_kategooria_omamine (kaup_kood, kauba_kategooria_kood) VALUES (
     COMMENT ON VIEW public.vaata_koiki_kaupu
         IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna ja seisundiliigi kohta. Vaade on vajalik laojuhtajale, et näha terviklikku pilti andmebaasi registreeritud kaupadest.';
 
-/* VIRTUAALVAADE #2 VAATA AKTIIVSEID && MITTEAKTIIVSEID KAUPE LÄBI PGADMINI CREATE VIEW */
-
-/*
-SELECT kaup.kaup_kood AS Kaup_kood,
-   puidutyyp.nimetus AS Puidutyyp,
-   tootja.nimetus AS Tootja,
-   kaup.maht_l AS Maht_l,
-   pakend.nimetus AS Pakend,
-   kaup.pakk_hind AS Paki_hind,
-   kaup.reg_aeg AS Reg_aeg,
-   kauba_seisundi_liik.nimetus AS Seisundi_liik
-  FROM tootja
-    JOIN (puidutyyp
-    JOIN (pakend
-    JOIN (kauba_seisundi_liik
-    JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood) ON pakend.pakend_kood = kaup.pakend_kood) ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
- WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[2, 3]);
-
- */
-
 
  CREATE OR REPLACE VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu WITH (security_barrier) AS
 SELECT kaup.kaup_kood AS Kaup_kood,
@@ -629,38 +589,12 @@ SELECT kaup.kaup_kood AS Kaup_kood,
     (kauba_seisundi_liik JOIN kaup ON kauba_seisundi_liik.kauba_seisundi_liik_kood = kaup.kauba_seisundi_liik_kood)
     ON pakend.pakend_kood = kaup.pakend_kood)
 ON puidutyyp.puidutyyp_kood = kaup.puidutyyp_kood) ON tootja.tootja_kood = kaup.tootja_kood
- WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 2]);
+ WHERE kauba_seisundi_liik.kauba_seisundi_liik_kood = ANY (ARRAY[1, 3]);
 
 ALTER TABLE public.vaata_ootel_ja_mitteaktiivsed_kaupu
     OWNER TO t154829;
 COMMENT ON VIEW public.vaata_ootel_ja_mitteaktiivsed_kaupu
     IS 'Vaade leiab andmed kaupade kohta, mille seisundi liik on "ootel" või “mitteaktiivne”. Kuvatakse andmed kaubakoodi, puidutüübi, tootja, paki mahu, pakenditüübi, paki hinna, registreerimise aja ja seisundiliigi kohta. Vaade on vajalik kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid';
-
- /* VIRTUAALVAADE #3 koondaruanne */
-
-/*
-SELECT Kaup.kaup_kood AS Kaup_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
-FROM Tootja
-INNER JOIN (Puidutyyp
-INNER JOIN (Pakend
-INNER JOIN ((Kauba_seisundi_liik
-INNER JOIN ((Kaup
-INNER JOIN Isik
-ON Kaup.reg_isik_id = Isik.isik_id)
-INNER JOIN Tootaja
-ON (Tootaja.isik_id = Kaup.reg_isik_id)
-AND (Isik.isik_id = Tootaja.isik_id))
-ON Kauba_seisundi_liik.kauba_seisundi_liik_kood = Kaup.kauba_seisundi_liik_kood)
-INNER JOIN ((Kauba_kategooria_tyyp
-INNER JOIN Kauba_kategooria
-ON Kauba_kategooria_tyyp.kauba_kategooria_tyyp_kood = Kauba_kategooria.kauba_kategooria_tyyp_kood)
-INNER JOIN Kauba_kategooria_omamine
-ON Kauba_kategooria.kauba_kategooria_kood = Kauba_kategooria_omamine.kauba_kategooria_kood)
-ON Kaup.kaup_kood = Kauba_kategooria_omamine.kaup_kood)
-ON Pakend.pakend_kood = Kaup.pakend_kood)
-ON Puidutyyp.puidutyyp_kood = Kaup.puidutyyp_kood)
-ON Tootja.tootja_kood = Kaup.tootja_kood;
-*/
 
 CREATE OR REPLACE VIEW public.vaata_kaupade_pohiandmeid WITH (security_barrier) AS
 SELECT Kaup.kaup_kood AS Kauba_kood, Puidutyyp.nimetus AS Puidutyyp, Tootja.nimetus AS Tootja, Kauba_kategooria_tyyp.nimetus AS Kategooria, COALESCE(string_agg(Kauba_kategooria.nimetus, ', ' ORDER BY Kauba_kategooria.nimetus), '') AS Tyyp, Kaup.maht_l AS Maht_l, Pakend.nimetus AS Pakend, Kaup.pakk_hind AS Paki_hind, Kauba_seisundi_liik.nimetus AS Seisundi_liik, Kaup.reg_aeg AS Reg_aeg, Isik.eesnimi AS Eesnimi, Isik.perenimi AS Perenimi, Isik.e_mail AS e_mail
@@ -688,8 +622,73 @@ ALTER TABLE public.vaata_kaupade_pohiandmeid
 COMMENT ON VIEW public.vaata_kaupade_pohiandmeid
     IS 'Vaade leiab andmed kõikide kaupade kohta, mis on registreeritud andmebaasi. Kuvatakse kaupade detailandmed, kus on nähaks tavaandmetele ka kauba registreerinud isiku eesnimi, perekonnanimi ja e-maili aadress. Vaade on mõeldud kaubahaldurile ja laojuhatajale, et nad saaksid teha juhtimisotsuseid.';
 
-/* PUNK 8 FUNKTSIOONID  */
 
+<<<<<<< Updated upstream
+=======
+
+CREATE OR REPLACE FUNCTION f_unusta_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+DELETE FROM Kaup
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=1
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+CREATE OR REPLACE FUNCTION f_aktiveeri_kaup
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=2
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood IN (1, 3)
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+
+CREATE OR REPLACE FUNCTION f_muuda_kaup_mitteaktiivseks
+(
+p_kaup_kood Kaup.kaup_kood%TYPE
+)
+RETURNS Kaup.kaup_kood%TYPE AS $$
+UPDATE Kaup SET
+kaup_kood=p_kaup_kood,
+kauba_seisundi_liik_kood=3
+WHERE kaup_kood=p_kaup_kood
+AND kauba_seisundi_liik_kood=2
+RETURNING kaup_kood;
+$$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+CREATE OR REPLACE FUNCTION f_lisa_kaup_kategooriasse
+(
+p_kaup_kood Kaup.kaup_kood%TYPE,
+p_kauba_kategooria_kood Kauba_kategooria_omamine.kaup_kood%TYPE
+)
+RETURNS VOID AS
+$BODY$
+      INSERT INTO Kauba_kategooria_omamine(
+      kaup_kood,
+      kauba_kategooria_kood
+      )
+      VALUES
+      (
+        (SELECT kaup_kood FROM Kaup
+      WHERE kauba_seisundi_liik_kood IN (1, 3)
+      AND kaup_kood=p_kaup_kood),
+      p_kauba_kategooria_kood
+      );
+$BODY$ LANGUAGE SQL SECURITY DEFINER
+SET search_path=public, pg_temp;
+
+>>>>>>> Stashed changes
 CREATE OR REPLACE FUNCTION f_registreeri_kaup (
 p_kaup_kood Kaup.kaup_kood%TYPE,
 p_pakend_kood Kaup.pakend_kood%TYPE,
@@ -758,7 +757,7 @@ tootja_kood=p_tootja_kood_uus,
 maht_l=p_maht_l_uus,
 pakk_hind=p_pakk_hind_uus
 WHERE kaup_kood=p_kaup_kood_vana
-AND kauba_seisundi_liik_kood IN (1, 2)
+AND kauba_seisundi_liik_kood IN (1, 3)
 RETURNING kaup_kood;
 $$ LANGUAGE SQL SECURITY DEFINER
 SET search_path=public, pg_temp;
@@ -879,7 +878,6 @@ FOR EACH ROW
 WHEN (NOT (NEW.kauba_seisundi_liik_kood=1))
 EXECUTE PROCEDURE kauba_seisundi_liik_kood_peab_olema_1();
 
-/* kui üritan kustutada kaupa, mis on seisundil ootel... siis see ei ole võimalik */
 
 CREATE TRIGGER kaup_delete_trigger BEFORE DELETE ON Kaup
 FOR EACH ROW
@@ -897,8 +895,6 @@ COMMENT ON TRIGGER kaup_insert_trigger_kontrolli_isik ON Kaup IS 'See trigger ko
 COMMENT ON TABLE Amet IS 'Kuna ametite kirjeldust võidakse hiljem muuta, siis määrame tabeli plokkidesse vaba ruumi 10% ulatuses (fillfactor=90)';
 
 COMMENT ON TABLE Isik IS 'Kuna isikutega seotud anmeid võidakse muuta, siis määrame tabeli plokkidesse vaba ruumi 10% ulatuses (fillfactor=90)';
-
---VACUUM ANALYZE;
 
 ANALYZE;
 EXPLAIN SELECT * FROM vaata_ootel_ja_mitteaktiivsed_kaupu;
@@ -956,7 +952,6 @@ vaata_ootel_ja_mitteaktiivsed_kaupu,
 vaata_kaupade_pohiandmeid
 TO laojuhataja;
 
---tuleb kirjutada seletavad laused ühe nii-öelda analyzei kohta
 
 
 CREATE OR REPLACE FUNCTION f_unusta_kaup
